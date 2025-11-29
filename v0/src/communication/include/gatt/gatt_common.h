@@ -1,0 +1,41 @@
+/*
+ * GATT Common Definitions
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef GATT_COMMON_H_
+#define GATT_COMMON_H_
+
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
+
+/* UUID Base for CareLoop Services */
+#define CARELOOP_UUID_BASE 0x12345678, 0x0000, 0x1000, 0x8000, 0x00805F9B34FB
+
+/* Service UUIDs */
+#define VITALS_SERVICE_UUID         BT_UUID_128_ENCODE(0x12345678, 0xA000, 0x1000, 0x8000, 0x00805F9B34FB)
+#define FALL_SERVICE_UUID           BT_UUID_128_ENCODE(0x12345678, 0xA100, 0x1000, 0x8000, 0x00805F9B34FB)
+#define SYSTEM_SERVICE_UUID         BT_UUID_128_ENCODE(0x12345678, 0xA200, 0x1000, 0x8000, 0x00805F9B34FB)
+
+/* Vitals Service Characteristic UUIDs */
+#define VITALS_HR_SPO2_UUID         BT_UUID_128_ENCODE(0x12345678, 0xA001, 0x1000, 0x8000, 0x00805F9B34FB)
+
+/* Fall Detection Service Characteristic UUIDs */
+#define FALL_EVENT_UUID             BT_UUID_128_ENCODE(0x12345678, 0xA101, 0x1000, 0x8000, 0x00805F9B34FB)
+#define FALL_THRESH_CFG_UUID        BT_UUID_128_ENCODE(0x12345678, 0xA102, 0x1000, 0x8000, 0x00805F9B34FB)
+
+/* System Service Characteristic UUIDs */
+#define SYS_ALERT_RESET_UUID        BT_UUID_128_ENCODE(0x12345678, 0xA201, 0x1000, 0x8000, 0x00805F9B34FB)
+#define SYS_BATTERY_LVL_UUID        BT_UUID_128_ENCODE(0x12345678, 0xA202, 0x1000, 0x8000, 0x00805F9B34FB)
+#define SYS_FW_VER_UUID             BT_UUID_128_ENCODE(0x12345678, 0xA203, 0x1000, 0x8000, 0x00805F9B34FB)
+
+/* Common GATT Error Responses */
+#define GATT_ERR_INVALID_LENGTH     BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN)
+#define GATT_ERR_INSUFFICIENT_PERM  BT_GATT_ERR(BT_ATT_ERR_INSUFFICIENT_AUTHORIZATION)
+
+/* GATT Helper Macros */
+#define GATT_DECLARE_128_UUID(uuid_val) BT_UUID_DECLARE_128(uuid_val)
+
+#endif /* GATT_COMMON_H_ */

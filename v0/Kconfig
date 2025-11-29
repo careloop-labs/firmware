@@ -1,0 +1,5 @@
+# Include the standard Zephyr Kconfig
+source "Kconfig.zephyr"
+
+# Include custom drivers configuration
+rsource "src/drivers/Kconfig"
