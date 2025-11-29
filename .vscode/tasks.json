@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build CareLoop Production",
+			"type": "shell",
+			"command": "./build_production.sh",
+			"group": "build",
+			"args": [
+				"--board",
+				"nrf52840dk_nrf52840"
+			],
+			"problemMatcher": [
+				"$gcc"
+			],
+			"isBackground": false
+		}
+	]
+}

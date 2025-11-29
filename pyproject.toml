@@ -1,0 +1,13 @@
+[project]
+name = "careloop"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "heartpy>=1.2.7",
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.4",
+    "pyserial>=3.5",
+    "serial>=0.0.97",
+]

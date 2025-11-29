@@ -1,0 +1,6 @@
+name: careloop-drivers
+build:
+  cmake: .
+  kconfig: src/drivers/sensor/max30102/Kconfig
+  settings:
+    dts_root: .

@@ -1,0 +1,45 @@
+# Copyright (c) 2018, NXP
+# SPDX-License-Identifier: Apache-2.0
+
+description: MAX30102 heart rate and SpO2 sensor
+
+compatible: "maxim,max30102"
+
+include: [sensor-device.yaml, i2c-device.yaml]
+
+properties:
+  sample-rate:
+    type: int
+    default: 100
+    description: |
+      Sample rate in Hz. Valid values are 50, 100, 200, 400, 800, 1000, 1600, 3200.
+    enum: [50, 100, 200, 400, 800, 1000, 1600, 3200]
+
+  led-current-red:
+    type: int
+    default: 31
+    description: |
+      LED current for red LED in mA. Range 0-63 (0.0mA to 50.0mA).
+      Each step is approximately 0.8mA.
+
+  led-current-ir:
+    type: int
+    default: 31
+    description: |
+      LED current for IR LED in mA. Range 0-63 (0.0mA to 50.0mA).
+      Each step is approximately 0.8mA.
+
+  adc-range:
+    type: int
+    default: 4096
+    description: |
+      ADC range in nA. Valid values are 2048, 4096, 8192, 16384.
+    enum: [2048, 4096, 8192, 16384]
+
+  pulse-width:
+    type: int
+    default: 411
+    description: |
+      LED pulse width in microseconds. Valid values are 69, 118, 215, 411.
+      Affects ADC resolution: 69μs=15-bit, 118μs=16-bit, 215μs=17-bit, 411μs=18-bit.
+    enum: [69, 118, 215, 411]

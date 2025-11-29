@@ -1,0 +1,8 @@
+# Custom Drivers Configuration
+
+menu "Custom Drivers"
+
+# Include sensor drivers
+rsource "sensor/Kconfig"
+
+endmenu
