@@ -7,3 +7,4 @@ twister-out/
 *.log
 compile_commands.json
 .vscode/
+.github/
