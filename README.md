@@ -1,8 +1,11 @@
 # CareLoop Firmware
 
-Zephyr-based firmware for the CareLoop wearable (nRF52840). The repository is
-now flat — the former `v0/` tree was lifted into the root to simplify builds and
-tooling.
+Zephyr-based firmware for the CareLoop wearable (nRF52840).
+
+# Important Information
+
+This firmware is experimental and incomplete. It is published for documentation
+and learning; the primary goal of this version was to explore and prototype.
 
 ## Quick start
 
