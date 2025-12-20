@@ -1,0 +1,9 @@
+build*/
+build/
+build-*/
+notes.md
+.west/
+twister-out/
+*.log
+compile_commands.json
+.vscode/
