@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2025 CareLoop Labs
+
 /*
  * State machine public interface (business layer only).
  * https://docs.zephyrproject.org/latest/services/smf/index.html#state-creation 
