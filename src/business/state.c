@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2025 CareLoop Labs
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
