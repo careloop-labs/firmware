@@ -5,7 +5,6 @@
 #include <gatt/services/device_info_service.h>
 #include <gatt/services/battery_service.h>
 #include <gatt/services/core_service.h>
-#include <gatt/services/vitals_service.h>
 
 #include <zephyr/logging/log.h>
 

@@ -4,5 +4,23 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(CareLoop)
 
-# Minimal entry point; other modules will be added as v1 develops.
-target_sources(app PRIVATE src/main.c)
+# Recursively add all .c files in src/ as sources
+file(GLOB_RECURSE APP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+)
+
+target_sources(app PRIVATE ${APP_SOURCES})
+
+target_include_directories(app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+# BLE
+target_include_directories(app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/communication/include
+)
+
+# Business
+target_include_directories(app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/business/include
+)

@@ -13,12 +13,9 @@ LOG_MODULE_REGISTER(ble_advertising, LOG_LEVEL_INF);
 
 static bool advertising_active = false;
 
-/* Advertising data: only Vitals Service UUID for legacy advertising */
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-    BT_DATA_BYTES(BT_DATA_UUID128_ALL,
-        0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xA0, 0x00, 0x78, 0x56, 0x34, 0x12
-    ),
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, CARELOOP_SERVICE_UUID),
 #if defined(CONFIG_BT_EXT_ADV)
     BT_DATA(BT_DATA_NAME_COMPLETE, NETWORK_DEVICE_NAME, sizeof(NETWORK_DEVICE_NAME) - 1),
 #endif

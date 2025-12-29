@@ -23,4 +23,4 @@
 #define ERR_BLE_RUNTIME (ERR_COMMUNICATION_SENDING + 1) //TODO: add usefule ERRORS here after development
 #define ERR_BLE_COLISSION (ERR_COMMUNICATION_SENDING + 2)
 
-#endif /* NETWORK_CONFIG_H_ *
+#endif /* NETWORK_CONFIG_H_ */
