@@ -10,3 +10,8 @@ fresh start for v1 development and is under active construction.
 - Skin temperature: TMP117.
 - Accelerometer/Gyroscope: BMI270.
 
+
+## Notes
+
+- Certain vendor-restricted sensor drivers are excluded from the public repository.
+
