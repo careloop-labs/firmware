@@ -1,8 +1,11 @@
 build*/
 build/
 build-*/
+notes
 notes.md
 .west/
+.cache/
+.embedder/
 twister-out/
 *.log
 compile_commands.json

@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20.0)
 
+# Out-of-tree board (boards/careloop/careloop_v2) and DT bindings (dts/bindings).
+# Both must be set before find_package(Zephyr) or they are ignored.
+list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(CareLoop)
