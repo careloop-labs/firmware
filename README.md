@@ -93,6 +93,7 @@ board.
 ./scripts/hil.sh run boot          # CPU alive at all - heartbeat only
 ./scripts/hil.sh run i2cscan       # which addresses ACK on the bus
 ./scripts/hil.sh run leds          # cycle D4/D3/D2, ending 12 s solid
+./scripts/hil.sh run ble           # advertise the product BLE stack for a phone
 ./scripts/hil.sh run tmp117stress  # hammer one device, catch intermittents
 
 ./scripts/hil.sh console           # watch an already-flashed board
