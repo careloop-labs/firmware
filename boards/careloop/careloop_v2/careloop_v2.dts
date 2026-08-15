@@ -156,6 +156,29 @@
 		 * thermistor-*-millidegrees threshold: that path divides by
 		 * the thermistor resistance.
 		 */
+		/*
+		 * D4, D3 and D2 - three red indicator LEDs, and the only
+		 * LEDs on the board that firmware can drive. Anodes sit on
+		 * +3V3 (BUCK2); cathodes go straight to the PMIC's
+		 * constant-current sinks LED0/LED1/LED2 (pads 25/26/27,
+		 * traced in the PCB netlist). There are deliberately no
+		 * series resistors - the sink sets the current.
+		 *
+		 * Host mode means software owns all three. The other two
+		 * modes hand an LED to the PMIC's own charging or error
+		 * indication, which is a product decision nobody has made
+		 * yet; in either of them led_on() returns -EPERM.
+		 *
+		 * LED1 in afe.kicad_sch is unrelated - that is the SFH7074
+		 * PPG emitter, driven by the AFE, and is out of scope.
+		 */
+		npm1300_leds: leds {
+			compatible = "nordic,npm1300-led";
+			nordic,led0-mode = "host";
+			nordic,led1-mode = "host";
+			nordic,led2-mode = "host";
+		};
+
 		npm1300_charger: charger {
 			compatible = "nordic,npm1300-charger";
 			term-microvolt = <4200000>;

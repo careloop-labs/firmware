@@ -19,4 +19,5 @@ target_sources(app PRIVATE
     src/test_temperature.c
     src/test_imu.c
     src/test_power.c
+    src/test_leds.c
 )
