@@ -11,8 +11,6 @@ supported:
   - ble
   - gpio
   - i2c
-  - spi
-  - adc
   - counter
   - pwm
   - watchdog

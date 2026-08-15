@@ -14,15 +14,15 @@ CONFIG_CONSOLE=y
 CONFIG_UART_CONSOLE=n
 CONFIG_SERIAL=n
 
-# Buses and GPIO required by the on-board sensors
+# Buses and GPIO required by the on-board sensors. No SPI: the QSPI/SPI pins
+# are unrouted and there is no external flash chip on this board.
 CONFIG_GPIO=y
 CONFIG_I2C=y
-CONFIG_SPI=y
 
 # Y4 32.768 kHz crystal is populated (XL1/P0.00, XL2/P0.01, 12 pF loading caps).
 CONFIG_CLOCK_CONTROL_NRF_K32SRC_XTAL=y
 CONFIG_CLOCK_CONTROL_NRF_K32SRC_20PPM=y
 
-# BMI270 INT2 is routed to P0.09, which is an NFC antenna pin at reset.
-# Without this the pin never functions as GPIO and the interrupt is dead.
-CONFIG_NFCT_PINS_AS_GPIOS=y
+# Note: NFCT pins are freed for GPIO use via the &uicr nfct-pins-as-gpios
+# property in careloop_v2.dts. The old CONFIG_NFCT_PINS_AS_GPIOS symbol was
+# removed in Zephyr 3.5.

@@ -2,14 +2,22 @@
  * Copyright (c) 2026 CareLoop
  * SPDX-License-Identifier: Apache-2.0
  *
- * CareLoop Wearable v2 - nRF52840 (aQFN73).
- * Net names and pin numbers taken from CareLoop.kicad_sch.
+ * CareLoop Wearable v2 - nRF52840 aQFN-73 (QIAA), confirmed by reading
+ * FICR.INFO.PACKAGE = 0x2004 on an assembled board.
+ *
+ * Peripheral addresses and net-level wiring come from the per-block sheets
+ * and are reliable. Individual nRF pin numbers are not: mcu.kicad_sch draws
+ * a QFN-48 symbol while the PCB places an aQFN-73 footprint, so that
+ * symbol's pin names do not map to the fitted part. Pins below are marked
+ * where they have been proven on hardware.
  */
 
 /dts-v1/;
 #include <nordic/nrf52840_qiaa.dtsi>
 #include "careloop_v2-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/regulator/npm13xx.h>
+#include <zephyr/dt-bindings/regulator/nrf5x.h>
 
 / {
 	model = "CareLoop Wearable v2";
@@ -22,17 +30,39 @@
 	};
 
 	/*
-	 * MAX17222 boost regulator (U8) generating +5V for the AFE LED
-	 * (TX) supply. Held off at reset - the PPG LEDs are dark until
-	 * this is enabled, so enable it before expecting optical data.
+	 * TPSM81299 boost (U6) generating +5V for the AFE LEDs, gated by net
+	 * BOOST_EN. Not regulator-boot-on: the PPG is out of scope until it
+	 * has a driver, so the rail stays off and the pin is driven inactive.
+	 * Pin unverified.
 	 */
 	afe_boost_en: afe-boost-en {
 		compatible = "regulator-fixed";
 		regulator-name = "afe_boost_5v";
 		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-		regulator-boot-on;
 		startup-delay-us = <1000>;
 	};
+};
+
+/*
+ * BMI270 INT2 is on P0.09, an NFC antenna pin at reset, so the pin is dead
+ * as a GPIO without this. Written to UICR once by SoC init, which then
+ * soft-resets - so the first flash after changing this needs a full erase
+ * and a power cycle. Reads back 0xFFFFFFFE at 0x1000120C when applied.
+ */
+&uicr {
+	nfct-pins-as-gpios;
+};
+
+/*
+ * Do not switch REG1 to DC/DC. L13, the 15 nH DCC inductor, is not fitted
+ * on current boards; without it NRF5X_REG_MODE_DCDC can leave the SoC
+ * unstable or refusing to start, which presents exactly like a dead board.
+ * LDO is already the upstream default - repeated here so the warning is
+ * where someone would go looking. CONFIG_SOC_DCDC_NRF52X does the same
+ * thing by another route.
+ */
+&reg1 {
+	regulator-initial-mode = <NRF5X_REG_MODE_LDO>;
 };
 
 &gpiote {
@@ -47,6 +77,7 @@
 	status = "okay";
 };
 
+/* All three addresses below verified on hardware by test/bringup/i2cscan. */
 &i2c0 {
 	compatible = "nordic,nrf-twim";
 	status = "okay";
@@ -55,18 +86,18 @@
 	pinctrl-names = "default", "sleep";
 	clock-frequency = <I2C_BITRATE_FAST>;
 
-	/*
-	 * U3 - TMP117 skin temperature. ADD0 strapped to GND => 0x48.
-	 * Driven by the generic ti,tmp11x driver. That binding has no
-	 * alert property, so the ALERT line (U3.C2 -> P0.13) is not
-	 * described here; drive it directly via gpio0 pin 13 if needed.
-	 */
+	/* U3 - TMP117 skin temperature. ADD0 to GND => 0x48. */
 	tmp117: tmp11x@48 {
 		compatible = "ti,tmp11x";
 		reg = <0x48>;
 	};
 
-	/* U4 - BMI270 IMU. SDO strapped to GND => 0x68. CSB tied high => I2C mode. */
+	/*
+	 * U4 - BMI270 IMU. SDO to GND => 0x68, CSB high => I2C mode.
+	 * irq-gpios is ordered [INT1, INT2]; only INT2 carries
+	 * SENSOR_TRIG_DATA_READY. Both pins unverified - the self-test's
+	 * interrupt check is what will settle them.
+	 */
 	bmi270: bmi270@68 {
 		compatible = "bosch,bmi270";
 		reg = <0x68>;
@@ -74,29 +105,76 @@
 			    <&gpio0 9 GPIO_ACTIVE_HIGH>;
 	};
 
-	/* U2 - nPM1300 PMIC (charger, regulators, fuel gauge). */
+	/*
+	 * U2 - nPM1300. Source of every rail: BUCK1 -> +1V8 (MCU, sensors,
+	 * I2C pull-ups), BUCK2 -> +3V3, LDO1 -> +VLDO1 (AFE only). With no
+	 * SAADC divider on the board, its VBAT ADC is the only way to read
+	 * battery voltage.
+	 *
+	 * Its interrupt is left undescribed: mfd_npm13xx_init() hard-fails on
+	 * any error in that path, so an unverified pin would break every
+	 * PMIC-adjacent driver at once.
+	 */
 	npm1300: pmic@6b {
 		compatible = "nordic,npm1300";
 		reg = <0x6b>;
 		status = "okay";
+
+		regulators {
+			compatible = "nordic,npm1300-regulator";
+
+			/*
+			 * BUCK1 is the MCU's own supply, so min == max is
+			 * load-bearing: regulator_common_init() snaps the
+			 * output into range at boot, and a wrong range here
+			 * browns out the CPU mid-init.
+			 */
+			npm1300_buck1: BUCK1 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			npm1300_buck2: BUCK2 {
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+			};
+
+			/* AFE supply - left off until the AFE has a driver. */
+			npm1300_ldo1: LDO1 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-allowed-modes = <NPM13XX_LDSW_MODE_LDO>;
+				regulator-initial-mode = <NPM13XX_LDSW_MODE_LDO>;
+			};
+		};
+
+		/*
+		 * No thermistor is fitted, hence 0 ohms. Do not add any
+		 * thermistor-*-millidegrees threshold: that path divides by
+		 * the thermistor resistance.
+		 */
+		npm1300_charger: charger {
+			compatible = "nordic,npm1300-charger";
+			term-microvolt = <4200000>;
+			current-microamp = <50000>;
+			dischg-limit-microamp = <200000>;
+			vbus-limit-microamp = <500000>;
+			thermistor-ohms = <0>;
+			thermistor-beta = <3380>;
+			charging-enable;
+		};
 	};
 
 	/*
-	 * U7 - TI AFE4404 optical front end (PPG), NOT a MAX86178.
-	 * Fixed I2C address 0x58. No upstream Zephyr driver exists yet,
-	 * so this node stays disabled until a "ti,afe4404" binding and
-	 * driver are written. Kept here so the wiring is recorded:
-	 *   ADC_RDY (data ready) -> P0.12   [net /AFE/AFE_INT1]
-	 *   RESETZ  (active low) -> P0.26   [net /AFE/AFE_INT2, misnamed]
-	 *   LED supply           -> &afe_boost_en
+	 * U5, the optical front end, is a MAX86178ENJ+T and is deliberately
+	 * absent: no Zephyr or NCS driver exists for it. It also needs both
+	 * LDO1 and the +5V boost up before it will ACK. The "ti,afe4404" node
+	 * that used to be here came from a stale BOM and matched no part on
+	 * the board.
 	 */
-	afe4404: afe4404@58 {
-		compatible = "ti,afe4404";
-		reg = <0x58>;
-		status = "disabled";
-		adc-rdy-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
-		reset-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;
-	};
 };
 
 &flash0 {
@@ -124,6 +202,9 @@
 	};
 };
 
+/* USB-C reaches the nPM1300 for charging and CC only - VBUS is not routed
+ * to the MCU, so this never enumerates. Kept enabled as before.
+ */
 zephyr_udc0: &usbd {
 	compatible = "nordic,nrf-usbd";
 	status = "okay";
