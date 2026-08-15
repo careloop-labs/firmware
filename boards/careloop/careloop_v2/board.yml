@@ -1,0 +1,6 @@
+board:
+  name: careloop_v2
+  full_name: CareLoop Wearable v2
+  vendor: careloop
+  socs:
+    - name: nrf52840

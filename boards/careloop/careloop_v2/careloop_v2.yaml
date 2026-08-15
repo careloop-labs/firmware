@@ -1,0 +1,19 @@
+identifier: careloop_v2
+name: CareLoop-Wearable-v2
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - ble
+  - gpio
+  - i2c
+  - spi
+  - adc
+  - counter
+  - pwm
+  - watchdog
+vendor: careloop
