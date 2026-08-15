@@ -1,0 +1,15 @@
+common:
+  harness: ztest
+  platform_allow:
+    - careloop_v2/nrf52840
+  # Only ever meaningful against the real PCB - there is nothing here that
+  # native_sim or qemu can stand in for.
+  harness_config:
+    fixture: fixture_careloop_v2
+  tags:
+    - bringup
+    - hil
+
+tests:
+  bringup.careloop:
+    timeout: 120

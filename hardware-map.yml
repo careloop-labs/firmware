@@ -1,0 +1,34 @@
+# Twister hardware map for CareLoop bring-up.
+#
+# The board has no UART pads, so there is no tty to name. serial_pty points
+# Twister at scripts/rtt_console.py, which streams SEGGER RTT to stdout over
+# a pty instead.
+#
+# id is the J-Link serial number, not a friendly name: Twister feeds it to
+# the jlink runner as --dev-id, and a name it cannot parse aborts the flash.
+#
+# flash_before matters here and is not the obvious choice. Only one host
+# process may hold a J-Link at a time, and rtt_console.py holds it - so if
+# Twister opened the console first, west flash would be locked out. Flashing
+# first is safe because the test image uses BLOCK_IF_FIFO_FULL: with no
+# reader attached the target blocks on a full RTT buffer instead of
+# discarding output, and resumes once the console attaches. Nothing is lost.
+#
+# Before a board's first run it must be provisioned once:
+#     ./scripts/hil unlock
+# Late nRF52840 revisions read an erased UICR.APPROTECT as *protected*, so
+# J-Link mass-erases on every connect and the flash silently disappears.
+# That write persists, so it is one-time per board, not per flash.
+
+- connected: true
+  platform: careloop_v2/nrf52840
+  id: "802003872"
+  product: "J-Link EDU Mini"
+  probe_id: "802003872"
+  runner: jlink
+  runner_params:
+    - "--speed=4000"
+  flash_before: true
+  serial_pty: "scripts/rtt_console.py --probe 802003872"
+  fixtures:
+    - fixture_careloop_v2

@@ -1,4 +1,6 @@
-identifier: careloop_v2
+# identifier must be the board *target*, not the board name, or Twister
+# reports "unrecognized platform" even though west build -b careloop_v2 works.
+identifier: careloop_v2/nrf52840
 name: CareLoop-Wearable-v2
 type: mcu
 arch: arm

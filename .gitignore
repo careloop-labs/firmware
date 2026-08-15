@@ -1,3 +1,4 @@
+# All generated output belongs under build/ - scripts/hil points Twister there.
 build*/
 build/
 build-*/
@@ -6,7 +7,10 @@ notes.md
 .west/
 .cache/
 .embedder/
-twister-out/
+# Belt and braces for runs started by hand: plain `west twister` defaults to
+# ./twister-out, and its default policy renames the previous run to
+# twister-out.1, .2, ... which a bare "twister-out/" rule does not match.
+twister-out*/
 *.log
 compile_commands.json
 .vscode/
