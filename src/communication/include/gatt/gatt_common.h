@@ -12,9 +12,13 @@
  */
 #define CARELOOP_UUID_BASE_VAL 0x12345678, 0x0000, 0x1000, 0x8000, 0x00805F9B34FB
 
-/* --- Standard SIG Services (16-bit) --- */
-#define BT_UUID_DIS_VAL               0x180A  /* Device Information Service */
-#define BT_UUID_BAS_VAL               0x180F  /* Battery Service */
+/* --- Standard SIG Services (16-bit) ---
+ * Deliberately not defined here. Zephyr already defines BT_UUID_DIS_VAL and
+ * BT_UUID_BAS_VAL in <zephyr/bluetooth/uuid.h>, included above, and spells
+ * them 0x180a / 0x180f. Redefining them with different tokens is a non-benign
+ * macro redefinition, which -Werror rejects. The services use Zephyr's
+ * BT_UUID_DIS / BT_UUID_BAS directly.
+ */
 
 /* --- CareLoop Core Service (A000) --- */
 #define CARELOOP_SERVICE_UUID         BT_UUID_128_ENCODE(0x12345678, 0xA000, 0x1000, 0x8000, 0x00805F9B34FB)

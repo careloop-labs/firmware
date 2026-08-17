@@ -25,6 +25,17 @@ static void connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
         LOG_ERR("Connection failed, err 0x%02x %s", err, bt_hci_err_to_str(err));
+
+        /*
+         * Restart advertising by hand. BT_LE_ADV_CONN_FAST_1 carries
+         * BT_LE_ADV_OPT_CONN, which does not auto-resume, and disconnected()
+         * is never called for a connection that failed to establish - so
+         * without this the device goes silent for good after one bad attempt.
+         */
+        if (ble_advertising_start() != 0) {
+            LOG_ERR("Could not resume advertising after a failed connection");
+        }
+
         return;
     }
 
