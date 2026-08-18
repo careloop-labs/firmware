@@ -1,0 +1,18 @@
+# required for Test Runner (Twister)
+identifier: careloop/nrf52840
+name: CareLoop-Wearable
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - ble
+  - gpio
+  - i2c
+  - counter
+  - pwm
+  - watchdog
+vendor: careloop

@@ -1,0 +1,40 @@
+# Copyright (c) 2026 CareLoop
+# SPDX-License-Identifier: Apache-2.0
+
+board:
+  name: careloop
+  full_name: CareLoop Wearable
+  vendor: careloop
+  socs:
+    - name: nrf52840
+
+  # Hardware revisions of this board.
+  #
+  # The board *name* stays `careloop` across all of them - a revision is not
+  # a new board, and putting the version in the name or in the directory would
+  # mean duplicating the dts, the defconfig and every reference in
+  # hardware-map.yml, hil.sh and testcase.yaml for each spin.
+  #
+  # Build a specific revision with '@':
+  #     west build -b careloop@2.0/nrf52840
+  #
+  # Zephyr normalises loose revisions typed on the command line, so `@2.0`
+  # becomes 2.0.0 and matches the entry below. Omitting '@' entirely selects
+  # `default`, which is why nothing else in the repo needs to name a revision.
+  #
+  # Adding v2.1 later takes two steps and nothing else:
+  #   1. add `- name: "2.1.0"` to the list below (and move `default` if 2.1
+  #      becomes the board you normally have on the bench)
+  #   2. copy careloop_nrf52840_2_0_0.overlay to careloop_nrf52840_2_1_0.overlay
+  #      and edit the deltas - one file per revision, so 2.0 and 2.1 never
+  #      share one and neither has to override the other. The name and its
+  #      location in this directory are fixed by the build system; it cannot
+  #      be moved into a subfolder.
+  #
+  # Only hardware that exists is listed, so the list
+  # stays an honest inventory rather than a wish list.
+  revision:
+    format: major.minor.patch
+    default: "2.0.0"
+    revisions:
+      - name: "2.0.0"

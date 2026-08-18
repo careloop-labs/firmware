@@ -2,8 +2,9 @@
  * Copyright (c) 2026 CareLoop
  * SPDX-License-Identifier: Apache-2.0
  *
- * Pin assignments extracted from CareLoop.kicad_sch (v2 hardware).
- * Single shared I2C bus: SDA = P1.02, SCL = P1.04.
+ * Hardware revision 2.0 of the CareLoop wearable.
+ * https://github.com/careloop-labs/hardware/releases/tag/hw-main-v2.0
+ *
  */
 
 &pinctrl {
