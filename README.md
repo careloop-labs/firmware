@@ -14,7 +14,7 @@ fresh start for v1 development and is under active construction.
 ## Hardware bring-up tests
 
 Every assembled board is verified by one firmware image containing the whole
-bring-up suite, driven by Zephyr Twister over SWD. `scripts/hil` wraps it.
+bring-up suite, driven by Zephyr Twister over SWD. `scripts/bringup.sh` wraps it.
 
 The board exposes no UART pads, so the console is SEGGER RTT riding the SWD
 lines. Twister reaches it through `scripts/rtt_console.py`, wired up as a
@@ -23,7 +23,8 @@ lines. Twister reaches it through `scripts/rtt_console.py`, wired up as a
 ### Once per board, before anything else
 
 ```sh
-./scripts/hil.sh unlock
+printf 'connect\nr\nh\nw4 0x10001208, 0xFFFFFF5A\nr\nq\n' |
+  JLinkExe -nogui 1 -device nRF52840_xxAA -if SWD -speed 4000
 ```
 
 Writes `UICR.APPROTECT = 0x5A`. Late nRF52840 revisions read an *erased*
@@ -34,15 +35,15 @@ persists, so this is never repeated for that board.
 ### Running the suite
 
 ```sh
-./scripts/hil.sh smoke
+./scripts/bringup.sh suite
 ```
 
 Builds, flashes, runs all tests on hardware and writes reports. A good run
 ends with:
 
 ```text
-1/1 careloop_v2/nrf52840  bringup.careloop  PASSED
-16 of 16 executed test cases passed (100.00%)
+1/1 careloop/nrf52840  bringup.careloop  PASSED
+20 of 20 executed test cases passed (100.00%)
 ```
 
 Covered: MCU identity and reset state, I2C bus and device presence, TMP117,
@@ -63,11 +64,12 @@ an operator can check - if the LEDs are dark, look at J3 first.
 The summary says what failed; the log says why. Everything the board printed -
 every `printk` in the tests plus the ztest PASS/FAIL lines - is captured:
 
+Twister buries these under a path containing the absolute source path, so
+find them rather than spelling it out. `handler.log` is what the board
+printed; `build.log`, `device.log` and `twister.log` are the other three.
+
 ```sh
-./scripts/hil.sh log            # what the board printed   (default)
-./scripts/hil.sh log build      # compiler output
-./scripts/hil.sh log device     # flashing and runner output
-./scripts/hil.sh log twister    # Twister's own log
+find build/twister-out -name handler.log -exec cat {} +
 ```
 
 The tests print their measurements rather than only asserting on them, so a
@@ -90,15 +92,23 @@ and streams RTT live until Ctrl-C - use them while physically probing the
 board.
 
 ```sh
-./scripts/hil.sh run boot          # CPU alive at all - heartbeat only
-./scripts/hil.sh run i2cscan       # which addresses ACK on the bus
-./scripts/hil.sh run leds          # cycle D4/D3/D2, ending 12 s solid
-./scripts/hil.sh run ble           # advertise the product BLE stack for a phone
-./scripts/hil.sh run tmp117stress  # hammer one device, catch intermittents
-
-./scripts/hil.sh console           # watch an already-flashed board
-./scripts/hil.sh probes            # list attached J-Links
+./scripts/bringup.sh boot      # CPU alive at all - heartbeat only
+./scripts/bringup.sh LEDs      # cycle D4/D3/D2, ending 12 s solid - watch the board
+./scripts/bringup.sh ble       # advertise the product BLE stack for a phone
+./scripts/bringup.sh clocks    # HFXO startup time and LFXO/HFXO ratio
 ```
+
+Run it with no argument to list what actually exists - the names come from the
+directories under `test/bringup`, not from a list kept in step with them.
+
+Extra arguments go to `west build`:
+
+```sh
+./scripts/bringup.sh clocks -- -DCONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y
+```
+
+With two boards attached, set `PROBE` to the J-Link serial number, or the
+runner picks one itself and may flash the other board.
 
 ### Adding a test
 
@@ -121,8 +131,8 @@ try `pkill -9 -f -i jlink` first.
 | Symptom | Fix |
 | --- | --- |
 | `Timeout during flashing` | Another process holds the probe |
-| Flash verifies, board still dead | `./scripts/hil unlock` was never run |
-| `unrecognized platform` | `careloop_v2.yaml` must say `identifier: careloop_v2/nrf52840` |
+| Flash verifies, board still dead | APPROTECT never opened; recipe at top of `scripts/bringup.sh` |
+| `unrecognized platform` | `careloop.yaml` must say `identifier: careloop/nrf52840` |
 | No RTT output | Stale probe holder; retry after `pkill` |
 | `Build failure` | A real error - Twister builds with `-Werror`; see `build.log` |
 
