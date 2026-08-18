@@ -54,7 +54,49 @@ def open_jlink(device: str, probe: str | None, speed: int) -> pylink.JLink:
     jlink.open(serial_no=int(probe) if probe else None)
     jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
     jlink.connect(device, speed=speed)
+
+    # Bound the control block search to RAM.
+    #
+    # Without this the search never finds the block and rtt_read() returns
+    # nothing forever - silently, with no error: the target fills its 16 KB
+    # up-buffer, blocks mid-print because the mode is BLOCK_IF_FIFO_FULL, and
+    # Twister waits out its timeout while every test has actually passed.
+    # An empty handler.log with a green run inside the buffer is this bug.
+    jlink.exec_command(f"SetRTTSearchRanges 0x{RAM_START:X} 0x{RAM_SIZE:X}")
+
     return jlink
+
+
+def clear_stale_control_blocks(jlink: pylink.JLink) -> None:
+    """Wipe RAM, then reset, so only the running image's RTT block exists.
+
+    The control block lives in a no-init section and `west flash` does not
+    clear RAM, so a block written by a *previous* image survives the flash.
+    J-Link's search scans upwards and locks onto the first valid "SEGGER RTT"
+    signature it meets - which is the stale one whenever the old image placed
+    it at a lower address than the new one.
+
+    That is not a cosmetic problem. It replays the previous run's output as
+    though it were current: the bring-up suite showed a clock diagnostic's
+    banner, timestamp and all, while Twister reported every testcase blocked.
+    Observed with the suite's block at 0x20004010 and a stale one at
+    0x20001010.
+
+    Zeroing then resetting is safe precisely because the reset follows: the
+    image re-initialises its own block from a known-clean RAM.
+    """
+    jlink.reset(halt=True)
+
+    words = [0] * 1024  # 4 KB per transaction
+    for addr in range(RAM_START, RAM_START + RAM_SIZE, 4096):
+        jlink.memory_write32(addr, words)
+
+    jlink.reset(halt=False)
+
+    # Let the image re-create its control block before the search runs.
+    # Without this the search can latch onto the freshly zeroed RAM and then
+    # stream it as content - 9.7 MB of NUL bytes in one session here.
+    time.sleep(1.0)
 
 
 def main() -> int:
@@ -63,9 +105,9 @@ def main() -> int:
     ap.add_argument("--probe", default=None, help="J-Link serial number")
     ap.add_argument("--speed", type=int, default=4000)
     ap.add_argument(
-        "--reset-cb",
+        "--no-reset-cb",
         action="store_true",
-        help="zero the RTT control block first so stale output cannot replay",
+        help="skip wiping stale RTT control blocks (see clear_stale_control_blocks)",
     )
     args = ap.parse_args()
 
@@ -75,12 +117,8 @@ def main() -> int:
         print(f"rtt_console: cannot open J-Link: {exc}", file=sys.stderr)
         return 1
 
-    if args.reset_cb:
-        try:
-            cb = jlink.rtt_get_buf_descriptor  # presence check only
-            del cb
-        except AttributeError:
-            pass
+    if not args.no_reset_cb:
+        clear_stale_control_blocks(jlink)
 
     jlink.rtt_start(None)
 
@@ -98,8 +136,14 @@ def main() -> int:
         while True:
             data = jlink.rtt_read(RTT_CHANNEL, READ_CHUNK)
             if data:
-                sys.stdout.write(bytes(data).decode("utf-8", "replace"))
-                sys.stdout.flush()
+                # Strip NULs: the target never emits them, so any that arrive
+                # are uninitialised RAM being mistaken for content. Passing
+                # them through buries the real log and breaks Twister's
+                # line-oriented parsing.
+                chunk = bytes(data).replace(b"\x00", b"")
+                if chunk:
+                    sys.stdout.write(chunk.decode("utf-8", "replace"))
+                    sys.stdout.flush()
             else:
                 time.sleep(POLL_INTERVAL_S)
     except KeyboardInterrupt:
