@@ -3,44 +3,58 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/smf.h>
 
 #include "state.h"
+
+/*
+ * Every run action returns SMF_EVENT_PROPAGATE.
+ *
+ * Zephyr changed the run signature from `void (*)(void *)` to
+ * `enum smf_state_result (*)(void *)`, which is what this file was failing to
+ * compile against. PROPAGATE is the faithful translation of the old behaviour,
+ * not a new choice: under the previous API a child's run was always followed by
+ * its parent's unless smf_set_handled() was called, and nothing here ever
+ * called it. That matters because power_parent is where the battery and
+ * charging transitions are meant to live - returning HANDLED from the children
+ * would stop it running at all.
+ */
 
 LOG_MODULE_REGISTER(state_machine, LOG_LEVEL_INF);
 
 static void boot_init_entry(void *obj);
-static void boot_init_run(void *obj);
+static enum smf_state_result boot_init_run(void *obj);
 static void boot_init_exit(void *obj);
 
 static void idle_day_entry(void *obj);
-static void idle_day_run(void *obj);
+static enum smf_state_result idle_day_run(void *obj);
 static void idle_day_exit(void *obj);
 
 static void imu_check_entry(void *obj);
-static void imu_check_run(void *obj);
+static enum smf_state_result imu_check_run(void *obj);
 static void imu_check_exit(void *obj);
 
 static void ppg_measure_entry(void *obj);
-static void ppg_measure_run(void *obj);
+static enum smf_state_result ppg_measure_run(void *obj);
 static void ppg_measure_exit(void *obj);
 
 static void sleep_continuous_entry(void *obj);
-static void sleep_continuous_run(void *obj);
+static enum smf_state_result sleep_continuous_run(void *obj);
 static void sleep_continuous_exit(void *obj);
 
 static void activity_mode_entry(void *obj);
-static void activity_mode_run(void *obj);
+static enum smf_state_result activity_mode_run(void *obj);
 static void activity_mode_exit(void *obj);
 
 static void low_battery_entry(void *obj);
-static void low_battery_run(void *obj);
+static enum smf_state_result low_battery_run(void *obj);
 static void low_battery_exit(void *obj);
 
 static void charging_entry(void *obj);
-static void charging_run(void *obj);
+static enum smf_state_result charging_run(void *obj);
 static void charging_exit(void *obj);
 
-static void power_logic_run(void *obj);
+static enum smf_state_result power_logic_run(void *obj);
 
 static const struct smf_state power_parent = 
     SMF_CREATE_STATE(NULL, power_logic_run, NULL, NULL, NULL);
@@ -68,7 +82,7 @@ void smf_update(struct smf_obj *obj)
 
 /* Init functions */
 
-static void power_logic_run(void *obj)
+static enum smf_state_result power_logic_run(void *obj)
 {
     struct smf_obj *ctx = (struct smf_obj *)obj;
 
@@ -77,6 +91,8 @@ static void power_logic_run(void *obj)
     //} else if (usb_is_connected()) {
     //    smf_set_state(SMF_CTX(ctx), &demo_states[CHARGING]);
     //}
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void boot_init_entry(void *obj)
@@ -85,11 +101,13 @@ static void boot_init_entry(void *obj)
     LOG_INF("BOOT_INIT entry");
 }
 
-static void boot_init_run(void *obj)
+static enum smf_state_result boot_init_run(void *obj)
 {
     ARG_UNUSED(obj);
     /* TODO: add boot init logic, then transition when ready */
     smf_set_state(SMF_CTX(obj), &demo_states[IDLE_DAY]);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void boot_init_exit(void *obj)
@@ -104,10 +122,12 @@ static void idle_day_entry(void *obj)
     LOG_INF("IDLE_DAY entry");
 }
 
-static void idle_day_run(void *obj)
+static enum smf_state_result idle_day_run(void *obj)
 {
     ARG_UNUSED(obj);
     /* TODO: add idle logic; remain or transition based on events */
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void idle_day_exit(void *obj)
@@ -122,11 +142,13 @@ static void imu_check_entry(void *obj)
     LOG_INF("IMU_CHECK entry");
 }
 
-static void imu_check_run(void *obj)
+static enum smf_state_result imu_check_run(void *obj)
 {
     ARG_UNUSED(obj);
     /* TODO: gate motion, decide next state. */
     smf_set_state(SMF_CTX(obj), &demo_states[PPG_MEASURE]);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void imu_check_exit(void *obj)
@@ -141,11 +163,13 @@ static void ppg_measure_entry(void *obj)
     LOG_INF("PPG_MEASURE entry");
 }
 
-static void ppg_measure_run(void *obj)
+static enum smf_state_result ppg_measure_run(void *obj)
 {
     ARG_UNUSED(obj);
     /* TODO: measure window, then return to idle. */
     smf_set_state(SMF_CTX(obj), &demo_states[IDLE_DAY]);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void ppg_measure_exit(void *obj)
@@ -160,9 +184,11 @@ static void sleep_continuous_entry(void *obj)
     LOG_INF("SLEEP_CONTINUOUS entry");
 }
 
-static void sleep_continuous_run(void *obj)
+static enum smf_state_result sleep_continuous_run(void *obj)
 {
     ARG_UNUSED(obj);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void sleep_continuous_exit(void *obj)
@@ -177,9 +203,11 @@ static void activity_mode_entry(void *obj)
     LOG_INF("ACTIVITY_MODE entry");
 }
 
-static void activity_mode_run(void *obj)
+static enum smf_state_result activity_mode_run(void *obj)
 {
     ARG_UNUSED(obj);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void activity_mode_exit(void *obj)
@@ -194,9 +222,11 @@ static void low_battery_entry(void *obj)
     LOG_INF("LOW_BATTERY entry");
 }
 
-static void low_battery_run(void *obj)
+static enum smf_state_result low_battery_run(void *obj)
 {
     ARG_UNUSED(obj);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void low_battery_exit(void *obj)
@@ -211,9 +241,11 @@ static void charging_entry(void *obj)
     LOG_INF("CHARGING entry");
 }
 
-static void charging_run(void *obj)
+static enum smf_state_result charging_run(void *obj)
 {
     ARG_UNUSED(obj);
+
+    return SMF_EVENT_PROPAGATE;
 }
 
 static void charging_exit(void *obj)
