@@ -14,15 +14,21 @@
  * reaches it through scripts/rtt_console.py as a --device-serial-pty.
  */
 
+#include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
 
-static void *bringup_setup(void)
+/*
+ * The banner used to be the single suite's setup function. With seven suites
+ * there is no one place to hang it, and repeating it per suite would bury the
+ * results - so print it from SYS_INIT, which runs before ztest starts.
+ */
+static int bringup_banner(void)
 {
     printk("\nCareLoop Hardware Bring-up\n");
     printk("==========================\n");
 
-    return NULL;
+    return 0;
 }
 
-ZTEST_SUITE(careloop_bringup, NULL, bringup_setup, NULL, NULL, NULL);
+SYS_INIT(bringup_banner, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

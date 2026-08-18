@@ -161,7 +161,8 @@ int main(void)
 
     if (!device_is_ready(leds)) {
         printk("RESULT: FAIL - nPM1300 LED driver not ready\n");
-        printk("  the PMIC register interface is unreachable; run i2cscan\n");
+        printk("  the PMIC register interface is unreachable;"
+               " run the bring-up suite for the I2C bus scan\n");
         return 0;
     }
 

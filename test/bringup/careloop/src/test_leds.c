@@ -48,14 +48,16 @@ static const struct device *const leds =
 /* Channel index is the PMIC's LED number; the designator is what is silkscreened. */
 static const char *const led_ref[LED_COUNT] = { "D4", "D3", "D2" };
 
-ZTEST(careloop_bringup, test_leds_ready)
+ZTEST_SUITE(careloop_7_leds, NULL, NULL, NULL, NULL, NULL);
+
+ZTEST(careloop_7_leds, test_leds_ready)
 {
     zassert_true(device_is_ready(leds),
                  "nPM1300 LED driver not ready - init writes all three MODE "
                  "registers, so this fails with the PMIC register interface");
 }
 
-ZTEST(careloop_bringup, test_leds_host_control)
+ZTEST(careloop_7_leds, test_leds_host_control)
 {
     int rc;
 

@@ -33,13 +33,15 @@ static const struct device *const pmic =
 static const struct device *const charger =
     DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
 
-ZTEST(careloop_bringup, test_power_pmic_ready)
+ZTEST_SUITE(careloop_6_power, NULL, NULL, NULL, NULL, NULL);
+
+ZTEST(careloop_6_power, test_power_pmic_ready)
 {
     zassert_true(device_is_ready(pmic), "nPM1300 MFD not ready");
     zassert_true(device_is_ready(charger), "nPM1300 charger not ready");
 }
 
-ZTEST(careloop_bringup, test_power_die_temp_sane)
+ZTEST(careloop_6_power, test_power_die_temp_sane)
 {
     struct sensor_value val;
     int32_t mc;
@@ -55,7 +57,7 @@ ZTEST(careloop_bringup, test_power_die_temp_sane)
                               "PMIC die temperature %d mC implausible", mc);
 }
 
-ZTEST(careloop_bringup, test_power_battery_voltage)
+ZTEST(careloop_6_power, test_power_battery_voltage)
 {
     struct sensor_value val;
     int32_t mv;

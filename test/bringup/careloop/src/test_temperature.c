@@ -31,14 +31,16 @@
 
 static const struct device *const tmp117 = DEVICE_DT_GET(DT_NODELABEL(tmp117));
 
-ZTEST(careloop_bringup, test_temperature_ready)
+ZTEST_SUITE(careloop_4_temperature, NULL, NULL, NULL, NULL, NULL);
+
+ZTEST(careloop_4_temperature, test_temperature_ready)
 {
     zassert_true(device_is_ready(tmp117),
                  "TMP117 not ready - driver rejected the device ID, or the "
                  "part did not answer at 0x48");
 }
 
-ZTEST(careloop_bringup, test_temperature_reading_sane)
+ZTEST(careloop_4_temperature, test_temperature_reading_sane)
 {
     struct sensor_value val;
     int32_t mc;

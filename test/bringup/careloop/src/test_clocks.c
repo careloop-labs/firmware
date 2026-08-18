@@ -42,13 +42,15 @@
 
 #include "clock_measure.h"
 
+ZTEST_SUITE(careloop_2_clocks, NULL, NULL, NULL, NULL, NULL);
+
 /*
  * The sleep clock must be the crystal, not the RC oscillator. Running on RC
  * is not a failure the radio reports - it simply widens every receive window
  * until connections drop, and careloop_defconfig declares 20 ppm, which
  * the RC cannot come close to honouring.
  */
-ZTEST(careloop_bringup, test_clock_lfclk_source)
+ZTEST(careloop_2_clocks, test_clock_lfclk_source)
 {
     nrf_clock_lfclk_t src = NRF_CLOCK_LFCLK_RC;
     bool running = nrf_clock_is_running(NRF_CLOCK, NRF_CLOCK_DOMAIN_LFCLK, &src);
@@ -70,7 +72,7 @@ ZTEST(careloop_bringup, test_clock_lfclk_source)
  * but a slow or failed HFXO start points squarely at the 32 MHz part or its
  * loading capacitors.
  */
-ZTEST(careloop_bringup, test_clock_hfxo_starts)
+ZTEST(careloop_2_clocks, test_clock_hfxo_starts)
 {
     uint32_t us = clock_hfxo_start_us();
     nrf_clock_hfclk_t src = NRF_CLOCK_HFCLK_LOW_ACCURACY;
@@ -99,7 +101,7 @@ ZTEST(careloop_bringup, test_clock_hfxo_starts)
  * how long you look, while a measurement artefact is not. If all three agree,
  * the disagreement is physical.
  */
-ZTEST(careloop_bringup, test_clock_lfxo_hfxo_ratio)
+ZTEST(careloop_2_clocks, test_clock_lfxo_hfxo_ratio)
 {
     static const uint32_t gates_ms[] = { 250U, 1000U, 2000U };
     int64_t ppm[ARRAY_SIZE(gates_ms)];
@@ -147,7 +149,7 @@ ZTEST(careloop_bringup, test_clock_lfxo_hfxo_ratio)
  * sizes its receive windows from this number and will stop listening before
  * a drifting peripheral actually transmits.
  */
-ZTEST(careloop_bringup, test_clock_declared_sca)
+ZTEST(careloop_2_clocks, test_clock_declared_sca)
 {
     printk("  declared sleep-clock accuracy: %s\n", clock_declared_sca());
     printk("  LF reference: %u Hz\n", (unsigned int)CLOCK_LF_TICKS_PER_SEC);

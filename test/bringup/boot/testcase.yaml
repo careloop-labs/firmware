@@ -1,0 +1,31 @@
+# Deliberately the thinnest image in the tree - prj.conf enables CONFIG_LOG and
+# nothing else. That is the whole point: when the careloop suite prints nothing,
+# this separates a dead board (APPROTECT mass-erased the flash - see the recipe
+# at the top of scripts/bringup.sh) from a peripheral driver hanging at init.
+#
+# Not a ztest, and it should not become one. Inside a ztest binary "main() was
+# reached" is a tautology - if the harness is printing, it was reached.
+
+common:
+  harness: console
+  platform_allow:
+    - careloop/nrf52840
+  harness_config:
+    fixture: fixture_careloop
+    type: multi_line
+    # Ordered, and the two beats are load-bearing. The banner alone only proves
+    # main() was entered; a second beat proves the kernel scheduler is still
+    # running a second later, which is what distinguishes a boot from a hang.
+    ordered: true
+    regex:
+      - "careloop boot OK - reached main\\(\\)"
+      - "beat 0"
+      - "beat 1"
+  tags:
+    - bringup
+    - hardware
+    - level1
+
+tests:
+  bringup.boot:
+    timeout: 60

@@ -4,10 +4,12 @@
 /*
  * MCU identity and reset state.
  *
- * Runs first because everything else is meaningless if the part is not the
- * one the board definition was written for. The package check is not
- * academic: the KiCad project disagrees with itself about which nRF52840
- * variant is fitted, and FICR is the only authority.
+ * Runs first - that is what the `1` in the suite name buys, since ztest orders
+ * suites alphabetically rather than by link order (see main.c) - because
+ * everything else is meaningless if the part is not the one the board
+ * definition was written for. The package check is not academic: the KiCad
+ * project disagrees with itself about which nRF52840 variant is fitted, and
+ * FICR is the only authority.
  */
 
 #include <zephyr/kernel.h>
@@ -19,7 +21,9 @@
 #define FICR_PACKAGE_QIAA   0x2004UL   /* aQFN73 */
 #define FICR_RAM_256KB      0x100UL
 
-ZTEST(careloop_bringup, test_mcu_identity)
+ZTEST_SUITE(careloop_1_mcu, NULL, NULL, NULL, NULL, NULL);
+
+ZTEST(careloop_1_mcu, test_mcu_identity)
 {
     uint32_t part = NRF_FICR->INFO.PART;
     uint32_t package = NRF_FICR->INFO.PACKAGE;
@@ -47,7 +51,7 @@ ZTEST(careloop_bringup, test_mcu_identity)
  * cleared, so a stale bit from a debugger reset is expected and ignored;
  * what must not appear is a watchdog or lockup reset.
  */
-ZTEST(careloop_bringup, test_mcu_reset_reason)
+ZTEST(careloop_1_mcu, test_mcu_reset_reason)
 {
     uint32_t reas = nrf_power_resetreas_get(NRF_POWER);
 
@@ -66,7 +70,7 @@ ZTEST(careloop_bringup, test_mcu_reset_reason)
  * fitted. If some future change enables it the SoC may not start at all, so
  * assert the state rather than trusting review to catch it.
  */
-ZTEST(careloop_bringup, test_mcu_dcdc_disabled)
+ZTEST(careloop_1_mcu, test_mcu_dcdc_disabled)
 {
     bool dcdc = nrf_power_dcdcen_get(NRF_POWER);
 

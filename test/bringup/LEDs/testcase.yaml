@@ -1,0 +1,11 @@
+common:
+  platform_allow:
+    - careloop/nrf52840
+  build_only: true
+  tags:
+    - bringup
+    - hardware
+    - manual
+
+tests:
+  bringup.leds: {}

@@ -30,13 +30,15 @@
 
 static const struct device *const imu = DEVICE_DT_GET(DT_NODELABEL(bmi270));
 
-ZTEST(careloop_bringup, test_imu_ready)
+ZTEST_SUITE(careloop_5_imu, NULL, NULL, NULL, NULL, NULL);
+
+ZTEST(careloop_5_imu, test_imu_ready)
 {
     zassert_true(device_is_ready(imu),
                  "BMI270 not ready - chip ID mismatch or config upload failed");
 }
 
-ZTEST(careloop_bringup, test_imu_acceleration_sane)
+ZTEST(careloop_5_imu, test_imu_acceleration_sane)
 {
     struct sensor_value odr = { .val1 = IMU_ODR_HZ, .val2 = 0 };
     struct sensor_value range = { .val1 = IMU_RANGE_G, .val2 = 0 };

@@ -1,0 +1,30 @@
+# Two reasons it stays a standalone app: it must build for the nRF52840 DK as a
+# control, and it ends by holding HFXO and leaving TIMER4 free-running forever
+# so the host can take an SWD-referenced reading. A ztest run has to terminate.
+
+
+common:
+  harness: console
+  platform_allow:
+    - careloop/nrf52840
+    - nrf52840dk/nrf52840
+  harness_config:
+    fixture: fixture_careloop
+    type: multi_line
+    ordered: true
+    # Only that the measurement ran to completion. The numbers themselves are
+    # for a person to compare against the other board - that judgement is the
+    # ztest suite's job (careloop_clocks), not this app's.
+    regex:
+      - "CARELOOP CLOCK A/B"
+      - "HFXO startup"
+      - "LFXO vs HFXO ratio"
+      - "RESULT: compare these three blocks"
+  tags:
+    - bringup
+    - hardware
+    - level2
+
+tests:
+  bringup.clocks:
+    timeout: 120
