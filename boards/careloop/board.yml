@@ -13,7 +13,7 @@ board:
   # The board *name* stays `careloop` across all of them - a revision is not
   # a new board, and putting the version in the name or in the directory would
   # mean duplicating the dts, the defconfig and every reference in
-  # hardware-map.yml, hil.sh and testcase.yaml for each spin.
+  # hardware-map.yml, bringup.sh and testcase.yaml for each spin.
   #
   # Build a specific revision with '@':
   #     west build -b careloop@2.0/nrf52840

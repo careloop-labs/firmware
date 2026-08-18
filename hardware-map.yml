@@ -15,13 +15,13 @@
 # discarding output, and resumes once the console attaches. Nothing is lost.
 #
 # Before a board's first run it must be provisioned once:
-#     ./scripts/hil unlock
+#     see the APPROTECT recipe at the top of scripts/bringup.sh
 # Late nRF52840 revisions read an erased UICR.APPROTECT as *protected*, so
 # J-Link mass-erases on every connect and the flash silently disappears.
 # That write persists, so it is one-time per board, not per flash.
 
 - connected: true
-  platform: careloop_v2/nrf52840
+  platform: careloop/nrf52840
   id: "802003872"
   product: "J-Link EDU Mini"
   probe_id: "802003872"
@@ -31,4 +31,4 @@
   flash_before: true
   serial_pty: "scripts/rtt_console.py --probe 802003872"
   fixtures:
-    - fixture_careloop_v2
+    - fixture_careloop
