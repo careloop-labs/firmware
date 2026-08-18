@@ -49,7 +49,7 @@ int ble_network_init(ble_network_event_cb_t event_cb)
     }
 
     /* Initialize BLE security */
-    err = ble_security_init();
+    err = ble_security_init(ble_manager_event_handler);
     if (err) {
         LOG_ERR("BLE security init failed (err %d)", err);
         return err;

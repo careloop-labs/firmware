@@ -16,11 +16,6 @@ LOG_MODULE_REGISTER(ble_connection, LOG_LEVEL_INF);
 static struct bt_conn *current_conn = NULL;
 static ble_network_event_cb_t event_callback = NULL;
 
-/* Connection state management */
-static ATOMIC_DEFINE(conn_state, 2U);
-#define STATE_CONNECTED    1U
-#define STATE_DISCONNECTED 2U
-
 static void connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
@@ -44,10 +39,16 @@ static void connected(struct bt_conn *conn, uint8_t err)
     LOG_INF("Connected to %s", addr);
 
     current_conn = bt_conn_ref(conn);
-    atomic_set_bit(conn_state, STATE_CONNECTED);
 
     /* Stop advertising when connected */
     ble_advertising_stop();
+
+    int sec_err = bt_conn_set_security(conn, NETWORK_SECURITY_LEVEL);
+
+    if (sec_err) {
+        LOG_ERR("Failed to request security level %d (err %d, ERR_BLE_SECURITY_REQUEST 0x%x)",
+                (int)NETWORK_SECURITY_LEVEL, sec_err, ERR_BLE_SECURITY_REQUEST);
+    }
 
     if (event_callback) {
         event_callback(BLE_NETWORK_EVENT_CONNECTED, conn);
@@ -65,8 +66,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
 
-    atomic_set_bit(conn_state, STATE_DISCONNECTED);
-
     /* Restart advertising when disconnected */
     ble_advertising_start();
 
@@ -81,9 +80,16 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
     if (!err) {
-        LOG_INF("Security changed: %s level %u", addr, level);
+        /* Level 1 means unencrypted. Reaching it is not an error and is
+         * reported through this same callback, so log it distinctly - an
+         * "encrypted" link that is actually L1 is the failure most easily
+         * mistaken for success.
+         */
+        LOG_INF("Security changed: %s level %u (%s)", addr, level,
+                level >= BT_SECURITY_L2 ? "encrypted" : "NOT encrypted");
     } else {
-        LOG_ERR("Security failed: %s level %u err %d", addr, level, err);
+        LOG_ERR("Security failed: %s level %u err %d %s", addr, level, err,
+                bt_security_err_to_str(err));
     }
 
     if (event_callback) {
