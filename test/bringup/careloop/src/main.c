@@ -8,7 +8,7 @@
  * domain; this file only owns the suite and the banner.
  *
  * Run it through Twister rather than by hand:
- *   ./scripts/hil smoke
+ *   ./scripts/bringup.sh suite
  *
  * Console is SEGGER RTT - the wearable exposes no UART pads - so Twister
  * reaches it through scripts/rtt_console.py as a --device-serial-pty.

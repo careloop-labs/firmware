@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CareLoop Labs
 
 /*
- * careloop_v2 BLE bring-up.
+ * careloop BLE bring-up.
  *
  * Brings up the *product* BLE stack - everything under src/communication,
  * compiled verbatim rather than copied - and reports enough over RTT for a
@@ -23,10 +23,10 @@
  * original measurement.
  *
  * Run it with:
- *   ./scripts/hil.sh run ble
+ *   ./scripts/bringup.sh ble
  *
  * Control build on known-good clocks:
- *   BOARD=nrf52840dk/nrf52840 ./scripts/hil.sh run ble
+ *   BOARD=nrf52840dk/nrf52840 ./scripts/bringup.sh ble
  */
 
 #include <zephyr/kernel.h>
@@ -44,13 +44,31 @@ LOG_MODULE_REGISTER(ble_bringup, LOG_LEVEL_INF);
 
 /*
  * SEGGER RTT defaults to NO_BLOCK_SKIP: anything written before a viewer
- * attaches is discarded, not queued. `hil.sh run` flashes (which resets the
+ * attaches is discarded, not queued. `bringup.sh` flashes (which resets the
  * board), then releases the probe, then attaches the console - so the banner
  * has to outlast that gap or it is simply lost.
  */
 #define RTT_ATTACH_GRACE_MS 3000U
 
 #define HEARTBEAT_PERIOD_S 10
+
+/*
+ * Wipe every stored bond at startup.
+ *
+ * Off by default - the whole point of the bond checks below is that state
+ * survives a reboot, and a build that clears it on boot can never show that.
+ * Turn it on for a *fresh* pairing run:
+ *
+ *   BOARD=nrf52840dk/nrf52840 ./scripts/bringup.sh ble -- \
+ *       -DEXTRA_CFLAGS=-DCLEAR_BONDS_ON_BOOT=1
+ *
+ * Without it, re-testing the pairing dialog also means deleting the device in
+ * the phone's Bluetooth settings - a peer that still holds a bond will simply
+ * encrypt from its side and never prompt.
+ */
+#ifndef CLEAR_BONDS_ON_BOOT
+#define CLEAR_BONDS_ON_BOOT 0
+#endif
 
 /* Sleep-clock accuracy this board declares to the controller. Worth printing:
  * half the crystal question is knowing which config is on the board in hand.
@@ -132,6 +150,58 @@ static void print_identity(void)
          * against the address nRF Connect lists.
          */
         printk("identity %u: %s\n", (unsigned int)i, s);
+    }
+}
+
+/*
+ * Bond storage.
+ *
+ * This is the persistence test, and it only means anything *before* the first
+ * connection of a boot: a bond listed here was read back out of NVS by the
+ * settings_load() inside ble_network_init(), so it survived the power cycle.
+ * A bond listed after pairing proves only that SMP ran.
+ *
+ * The distinction matters because CONFIG_BT_SETTINGS without a working
+ * storage backend links, runs, and silently stores nothing - the failure
+ * surfaces as an unexpected pairing prompt days later, not as an error here.
+ */
+struct bond_scan {
+    unsigned int count;
+    bool verbose;
+};
+
+static void bond_cb(const struct bt_bond_info *info, void *user_data)
+{
+    struct bond_scan *scan = user_data;
+
+    scan->count++;
+
+    if (scan->verbose) {
+        char s[BT_ADDR_LE_STR_LEN];
+
+        bt_addr_le_to_str(&info->addr, s, sizeof(s));
+        printk("bond     %u: %s\n", scan->count, s);
+    }
+}
+
+static unsigned int count_bonds(void)
+{
+    struct bond_scan scan = { .count = 0U, .verbose = false };
+
+    bt_foreach_bond(BT_ID_DEFAULT, bond_cb, &scan);
+    return scan.count;
+}
+
+static void print_bonds(const char *when)
+{
+    struct bond_scan scan = { .count = 0U, .verbose = true };
+
+    bt_foreach_bond(BT_ID_DEFAULT, bond_cb, &scan);
+
+    if (scan.count == 0U) {
+        printk("bond     none stored (%s)\n", when);
+    } else {
+        printk("bond     %u stored (%s)\n", scan.count, when);
     }
 }
 
@@ -230,8 +300,6 @@ static void start_rx_test(void)
 
 static void ble_event_handler(enum ble_network_event event, struct bt_conn *conn)
 {
-    ARG_UNUSED(conn);
-
     switch (event) {
     case BLE_NETWORK_EVENT_CONNECTED:
         printk(">>> CONNECTED\n");
@@ -240,10 +308,17 @@ static void ble_event_handler(enum ble_network_event event, struct bt_conn *conn
         printk(">>> DISCONNECTED (advertising should resume)\n");
         break;
     case BLE_NETWORK_EVENT_BONDED:
-        printk(">>> BONDED\n");
+        /* Until bt_conn_auth_info_cb was registered in ble_security.c this
+         * branch was unreachable: nothing in the tree emitted the event.
+         */
+        printk(">>> BONDED - %u bond(s) now stored\n", count_bonds());
         break;
     case BLE_NETWORK_EVENT_SECURITY_CHANGED:
-        printk(">>> SECURITY CHANGED\n");
+        /* Level 1 is an unencrypted link. Reaching it is reported through
+         * this same event, so print the number rather than assume success.
+         */
+        printk(">>> SECURITY CHANGED - level %d\n",
+               conn ? (int)bt_conn_get_security(conn) : -1);
         break;
     default:
         printk(">>> unknown BLE event %d\n", (int)event);
@@ -269,6 +344,19 @@ int main(void)
     }
 
     print_identity();
+
+    /* Before any connection: whatever is listed here came out of NVS. */
+    print_bonds("from storage, before any connection");
+
+#if CLEAR_BONDS_ON_BOOT
+    printk("bond     CLEAR_BONDS_ON_BOOT set - erasing all bonds\n");
+    rc = bt_unpair(BT_ID_DEFAULT, BT_ADDR_LE_ANY);
+    if (rc != 0) {
+        printk("bond     FAILED to clear bonds (%d)\n", rc);
+    }
+    print_bonds("after clearing");
+#endif
+
     print_adv_payload();
 
     rc = ble_network_start_advertising();
@@ -289,13 +377,26 @@ int main(void)
      * rather than inferred from not being connected.
      */
     for (;;) {
+        struct bt_conn *conn;
+        unsigned int peers;
+
         k_sleep(K_SECONDS(HEARTBEAT_PERIOD_S));
 
-        printk("[%s] adv=%s  rx: %u pkts / %u peers",
+        conn = ble_network_get_connection();
+        peers = (unsigned int)atomic_get(&rx_peers);
+
+        printk("[%s] sec=%d bonds=%u adv=%s  rx: %u pkts / %u%s peers",
                ble_network_is_connected() ? "CONNECTED" : "idle",
+               conn ? (int)bt_conn_get_security(conn) : 0,
+               count_bonds(),
                ble_advertising_is_active() ? "yes" : "NO",
                (unsigned int)atomic_get(&rx_packets),
-               (unsigned int)atomic_get(&rx_peers));
+               peers,
+               /* The peer table is bounded, so this figure stops rising once
+                * full. Marking saturation keeps a ceiling from being read as
+                * a measurement.
+                */
+               peers >= RX_PEER_TABLE ? "+" : "");
 
         if (atomic_get(&rx_packets) > 0) {
             printk("  best RSSI %d dBm\n", (int)atomic_get(&rx_best_rssi));

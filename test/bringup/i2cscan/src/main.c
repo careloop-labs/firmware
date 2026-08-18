@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CareLoop Labs
 
 /*
- * careloop_v2 I2C bus scan.
+ * careloop I2C bus scan.
  *
  * Answers what the schematic cannot: which pins the shared I2C bus is
  * actually on. mcu.kicad_sch draws a QFN-48 symbol but the fitted part is
@@ -11,7 +11,7 @@
  * a wrong one finds nothing, because the bus floats and every address NAKs.
  *
  * Build once per candidate, e.g.
- *   west build --no-sysbuild -b careloop_v2 -d build/a -p always . \
+ *   west build --no-sysbuild -b careloop -d build/a -p always . \
  *       -- -DEXTRA_DTC_OVERLAY_FILE=$PWD/boards/pins_p102_p104.overlay
  *
  * This proves wiring, not function: an ACK only shows something answers at

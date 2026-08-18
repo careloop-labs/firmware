@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CareLoop Labs
 
 /*
- * careloop_v2 boot test.
+ * careloop boot test.
  *
  * Proves exactly one thing: the image flashes, the CPU resets into it, main()
  * is reached, and log output arrives over RTT. Nothing else - no peripherals,
@@ -21,7 +21,7 @@ LOG_MODULE_REGISTER(boot, LOG_LEVEL_INF);
 
 int main(void)
 {
-    LOG_INF("careloop_v2 boot OK - reached main()");
+    LOG_INF("careloop boot OK - reached main()");
 
     for (uint32_t beat = 0U;; beat++) {
         k_sleep(K_SECONDS(HEARTBEAT_PERIOD_S));

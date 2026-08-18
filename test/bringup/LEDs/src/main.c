@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CareLoop Labs
 
 /*
- * careloop_v2 LED exerciser.
+ * careloop LED exerciser.
  *
  * Drives D4, D3 and D2 - the nPM1300's LED0, LED1 and LED2 sinks - through a
  * repeating set of patterns, ending with a long solid phase that holds all
@@ -31,7 +31,7 @@
  * or not that jumper is bridged. That is exactly how the first board failed.
  *
  * Run it with:
- *   ./scripts/hil.sh run leds
+ *   ./scripts/bringup.sh leds
  */
 
 #include <zephyr/kernel.h>
@@ -60,7 +60,7 @@ LOG_MODULE_REGISTER(leds, LOG_LEVEL_INF);
 
 /*
  * SEGGER RTT defaults to NO_BLOCK_SKIP: anything written before a viewer
- * attaches is discarded, not queued. `hil.sh run` resets the board as it
+ * attaches is discarded, not queued. `bringup.sh` resets the board as it
  * flashes and only then releases the probe and attaches the console, so this
  * has to outlast that gap - with a finite run there is no second chance to
  * catch the opening phase.
