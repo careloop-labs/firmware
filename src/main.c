@@ -1,3 +1,6 @@
+// TODO: this file is only for testing BLE
+
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
