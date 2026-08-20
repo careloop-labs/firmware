@@ -123,10 +123,18 @@ hard way:
 - Probe presence repeatedly, not once. The existing checks probe 64 times
   because a single probe passes a board with an intermittent sensor.
 
+### Debugging
+
+Source-level debugging over SWD with Zephyr thread awareness: start
+`./scripts/debug.sh` and attach on port 2331. Full walkthrough, for both the
+command line and VS Code, in [docs/debugging.md](docs/debugging.md).
+
 ### Troubleshooting
 
-Only one process may hold the J-Link. Most odd failures are a stale one, so
-try `pkill -9 -f -i jlink` first.
+Only one process may hold the J-Link. Most odd failures are a stale one, so try
+`pkill -9 -f rtt_console.py; pkill -9 -f -i jlink` first. Both patterns are
+needed - `rtt_console.py` holds the probe but its command line contains no
+"jlink", so the second command alone never matches it.
 
 | Symptom | Fix |
 | --- | --- |
@@ -135,6 +143,7 @@ try `pkill -9 -f -i jlink` first.
 | `unrecognized platform` | `careloop.yaml` must say `identifier: careloop/nrf52840` |
 | No RTT output | Stale probe holder; retry after `pkill` |
 | `Build failure` | A real error - Twister builds with `-Werror`; see `build.log` |
+| Debugger shows only `Thread 57005` | Wrong ELF, or an image without `CONFIG_DEBUG_THREAD_INFO`; see [docs/debugging.md](docs/debugging.md) |
 
 The toolchain is discovered at `/opt/nordic/ncs` (NCS v3.4.0). Override with
 the `NCS`, `NCS_VERSION`, `TOOLCHAIN`, `BOARD` or `PROBE` environment
