@@ -16,6 +16,26 @@ LOG_MODULE_REGISTER(ble_connection, LOG_LEVEL_INF);
 static struct bt_conn *current_conn = NULL;
 static ble_network_event_cb_t event_callback = NULL;
 
+#define SEC_RECOVERY_ATTEMPTS 1U
+
+static bt_addr_le_t sec_recovery_peer;
+static uint8_t sec_recovery_tries;
+
+static bool sec_recovery_allowed(const bt_addr_le_t *peer)
+{
+    if (bt_addr_le_cmp(&sec_recovery_peer, peer) != 0) {
+        bt_addr_le_copy(&sec_recovery_peer, peer);
+        sec_recovery_tries = 0U;
+    }
+
+    if (sec_recovery_tries >= SEC_RECOVERY_ATTEMPTS) {
+        return false;
+    }
+
+    sec_recovery_tries++;
+    return true;
+}
+
 static void connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
@@ -113,7 +133,24 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_
      * writable - observed on hardware as "Security failed ... level 1
      * err 2" followed by a link that lived on until the peer hung up.
      */
-    if (err != BT_SECURITY_ERR_SUCCESS || level < NETWORK_SECURITY_LEVEL) {
+    if (err == BT_SECURITY_ERR_SUCCESS && level >= NETWORK_SECURITY_LEVEL) {
+        /* A peer that reaches the required level has no stale bond. */
+        sec_recovery_tries = 0U;
+    } else if (err == BT_SECURITY_ERR_PIN_OR_KEY_MISSING &&
+               sec_recovery_allowed(bt_conn_get_dst(conn))) {
+        /*
+         * The peer holds a key this device does not. Ask it to pair again
+         * rather than dropping the link - see the note on sec_recovery_peer.
+         */
+        int rc = bt_conn_set_security(conn, NETWORK_SECURITY_LEVEL | BT_SECURITY_FORCE_PAIR);
+
+        if (rc == 0) {
+            LOG_WRN("%s has a bond this device lost - forcing a fresh pairing", addr);
+        } else {
+            LOG_ERR("Could not force re-pairing with %s (err %d) - dropping the link", addr, rc);
+            (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+        }
+    } else {
         LOG_WRN("Disconnecting %s: level %u is below the required level %d", addr, level,
                 (int)NETWORK_SECURITY_LEVEL);
         (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
