@@ -14,7 +14,11 @@
 // or receiving code, because a security failure is neither.
 #define ERR_COMMUNICATION_SECURITY 0x500
 
-
-
+// hal
+#define ERR_HAL_POWER 0x600
+#define ERR_HAL_SKIN_TEMPERATURE 0x700
+#define ERR_HAL_MOTION 0x800
+#define ERR_HAL_LEDS 0x900
+#define ERR_HAL_DEVICE_IDENTITY 0xA00
 
 #endif /* ERRORS_H */
