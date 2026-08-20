@@ -21,6 +21,16 @@ int ble_advertising_init(void);
 int ble_advertising_start(void);
 
 /**
+ * @brief Request an advertising restart from a Bluetooth callback context
+ *
+ * Advertising cannot be restarted from inside a connection callback: the conn
+ * object is not released until the callback returns, so bt_le_adv_start()
+ * fails with -ENOMEM. This defers the restart to the system workqueue and
+ * retries a bounded number of times. Safe to call from the BT RX thread.
+ */
+void ble_advertising_restart(void);
+
+/**
  * @brief Stop BLE advertising
  * 
  * @return 0 on success, negative error code on failure

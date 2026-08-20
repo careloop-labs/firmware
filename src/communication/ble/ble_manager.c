@@ -41,6 +41,26 @@ int ble_network_init(ble_network_event_cb_t event_cb)
 
     LOG_INF("Bluetooth initialized");
 
+    /*
+     * settings_load() must run here, not at the end of this function.
+     *
+     * With CONFIG_BT_SETTINGS=y and no preset identity, bt_init() returns
+     * early - it logs "No ID address. App must call settings_load()" and does
+     * *not* set BT_DEV_READY. That flag is only raised inside the settings
+     * commit handler, so until this call returns the stack is not ready and
+     * every API that checks BT_DEV_READY fails. The legacy advertising path
+     * below happens not to call one, which is the only reason the old ordering
+     * appeared to work; bt_le_ext_adv_create() returns -EAGAIN unconditionally,
+     * so enabling CONFIG_BT_EXT_ADV would have broken init outright.
+     *
+     * This is also what loads stored bonds.
+     */
+    err = settings_load();
+    if (err) {
+        LOG_ERR("Failed to load settings (err %d) - bonds will not persist", err);
+        return err;
+    }
+
     /* Initialize GATT server */
     err = gatt_server_init();
     if (err) {
@@ -68,9 +88,6 @@ int ble_network_init(ble_network_event_cb_t event_cb)
         LOG_ERR("BLE advertising init failed (err %d)", err);
         return err;
     }
-
-    /* Load stored bonds and settings */
-    settings_load();
 
     LOG_INF("BLE network layer initialized successfully");
     return 0;

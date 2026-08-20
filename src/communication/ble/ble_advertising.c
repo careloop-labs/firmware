@@ -7,11 +7,19 @@
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/gap.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(ble_advertising, LOG_LEVEL_INF);
 
-static bool advertising_active = false;
+static atomic_t advertising_active = ATOMIC_INIT(0);
+
+#define ADV_RESTART_RETRIES  5
+#define ADV_RESTART_DELAY_MS 100
+
+static void adv_restart_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(adv_restart_work, adv_restart_work_handler);
+static atomic_t adv_restart_attempts = ATOMIC_INIT(0);
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -31,6 +39,28 @@ static const struct bt_data sd[] = {
 #if defined(CONFIG_BT_EXT_ADV)
 static struct bt_le_ext_adv *ext_adv = NULL;
 #endif
+
+static void adv_restart_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    int err = ble_advertising_start();
+
+    if (err == 0) {
+        atomic_set(&adv_restart_attempts, 0);
+        return;
+    }
+
+    if (atomic_inc(&adv_restart_attempts) < (ADV_RESTART_RETRIES - 1)) {
+        LOG_WRN("Advertising restart failed (err %d), retrying", err);
+        (void)k_work_reschedule(&adv_restart_work, K_MSEC(ADV_RESTART_DELAY_MS));
+        return;
+    }
+
+    LOG_ERR("Advertising could not be restarted after %d attempts (err %d) - "
+            "the device is no longer discoverable",
+            ADV_RESTART_RETRIES, err);
+}
 
 int ble_advertising_init(void)
 {
@@ -66,7 +96,7 @@ int ble_advertising_init(void)
     }
 #endif
 
-    advertising_active = false;
+    atomic_set(&advertising_active, 0);
     LOG_INF("BLE advertising initialized");
     return 0;
 }
@@ -75,39 +105,42 @@ int ble_advertising_start(void)
 {
     int err;
 
-    if (advertising_active) {
-        LOG_WRN("Advertising already active");
-        return 0;
-    }
-
 #if !defined(CONFIG_BT_EXT_ADV)
     LOG_INF("Starting Legacy Advertising (connectable and scannable)");
     err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+#else
+    LOG_INF("Starting Extended Advertising (connectable non-scannable)");
+    err = bt_le_ext_adv_start(ext_adv, BT_LE_EXT_ADV_START_DEFAULT);
+#endif
+
+    /* Already advertising is the state the caller asked for, not a failure. */
+    if (err == -EALREADY) {
+        atomic_set(&advertising_active, 1);
+        return 0;
+    }
+
     if (err) {
         LOG_ERR("Advertising failed to start (err %d)", err);
         return err;
     }
-#else
-    LOG_INF("Starting Extended Advertising (connectable non-scannable)");
-    err = bt_le_ext_adv_start(ext_adv, BT_LE_EXT_ADV_START_DEFAULT);
-    if (err) {
-        LOG_ERR("Failed to start extended advertising set (err %d)", err);
-        return err;
-    }
-#endif
 
-    advertising_active = true;
+    atomic_set(&advertising_active, 1);
     LOG_INF("Advertising successfully started");
     return 0;
+}
+
+void ble_advertising_restart(void)
+{
+    atomic_set(&adv_restart_attempts, 0);
+    (void)k_work_reschedule(&adv_restart_work, K_NO_WAIT);
 }
 
 int ble_advertising_stop(void)
 {
     int err;
 
-    if (!advertising_active) {
-        return 0;
-    }
+    /* Cancel any restart still queued, or it would undo this stop. */
+    (void)k_work_cancel_delayable(&adv_restart_work);
 
 #if !defined(CONFIG_BT_EXT_ADV)
     err = bt_le_adv_stop();
@@ -115,17 +148,18 @@ int ble_advertising_stop(void)
     err = bt_le_ext_adv_stop(ext_adv);
 #endif
 
-    if (err) {
+    /* Not advertising is the state the caller asked for, not a failure. */
+    if (err && err != -EALREADY) {
         LOG_ERR("Failed to stop advertising (err %d)", err);
         return err;
     }
 
-    advertising_active = false;
+    atomic_set(&advertising_active, 0);
     LOG_INF("Advertising stopped");
     return 0;
 }
 
 bool ble_advertising_is_active(void)
 {
-    return advertising_active;
+    return atomic_get(&advertising_active) != 0;
 }

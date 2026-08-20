@@ -12,20 +12,6 @@ LOG_MODULE_REGISTER(ble_security, LOG_LEVEL_INF);
 
 static ble_network_event_cb_t event_callback = NULL;
 
-static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
-{
-    char addr[BT_ADDR_LE_STR_LEN];
-    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-    LOG_INF("Passkey for %s: %06u", addr, passkey);
-}
-
-static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
-{
-    char addr[BT_ADDR_LE_STR_LEN];
-    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-    LOG_INF("Confirm passkey for %s: %06u", addr, passkey);
-    bt_conn_auth_passkey_confirm(conn);
-}
 
 static void auth_cancel(struct bt_conn *conn)
 {
@@ -34,9 +20,7 @@ static void auth_cancel(struct bt_conn *conn)
     LOG_INF("Pairing cancelled: %s", addr);
 }
 
-static struct bt_conn_auth_cb auth_cb_display = {
-    .passkey_display = auth_passkey_display,
-    .passkey_confirm = auth_passkey_confirm,
+static struct bt_conn_auth_cb auth_cb = {
     .cancel = auth_cancel,
 };
 
@@ -97,7 +81,7 @@ int ble_security_init(ble_network_event_cb_t event_cb)
     event_callback = event_cb;
 
     /* Register authentication callbacks */
-    err = bt_conn_auth_cb_register(&auth_cb_display);
+    err = bt_conn_auth_cb_register(&auth_cb);
     if (err) {
         LOG_ERR("Failed to register auth callbacks (err %d)", err);
         return ERR_BLE_AUTH_CB_REGISTER;

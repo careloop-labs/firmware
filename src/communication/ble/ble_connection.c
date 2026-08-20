@@ -26,10 +26,11 @@ static void connected(struct bt_conn *conn, uint8_t err)
          * BT_LE_ADV_OPT_CONN, which does not auto-resume, and disconnected()
          * is never called for a connection that failed to establish - so
          * without this the device goes silent for good after one bad attempt.
+         *
+         * Deferred, not direct: bt_le_adv_start() from inside this
+         * callback returns -ENOMEM because the conn object is still held.
          */
-        if (ble_advertising_start() != 0) {
-            LOG_ERR("Could not resume advertising after a failed connection");
-        }
+        ble_advertising_restart();
 
         return;
     }
@@ -46,8 +47,18 @@ static void connected(struct bt_conn *conn, uint8_t err)
     int sec_err = bt_conn_set_security(conn, NETWORK_SECURITY_LEVEL);
 
     if (sec_err) {
-        LOG_ERR("Failed to request security level %d (err %d, ERR_BLE_SECURITY_REQUEST 0x%x)",
+        LOG_ERR("Failed to request security level %d (err %d, ERR_BLE_SECURITY_REQUEST 0x%x) - "
+                "dropping the link",
                 (int)NETWORK_SECURITY_LEVEL, sec_err, ERR_BLE_SECURITY_REQUEST);
+
+        /*
+         * Every attribute in this GATT database is still declared with
+         * plain BT_GATT_PERM_READ/WRITE, so an unencrypted link can read
+         * and write all of it. Until those permissions require
+         * encryption, refusing to hold a link that cannot be secured is
+         * the only thing between an unpaired peer and Control.
+         */
+        (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
     }
 
     if (event_callback) {
@@ -66,8 +77,11 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
 
-    /* Restart advertising when disconnected */
-    ble_advertising_start();
+    /* Restart advertising when disconnected. Deferred: calling
+     * bt_le_adv_start() here fails with -ENOMEM, because this conn is not
+     * released until the callback returns.
+     */
+    ble_advertising_restart();
 
     if (event_callback) {
         event_callback(BLE_NETWORK_EVENT_DISCONNECTED, conn);
@@ -90,6 +104,19 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_
     } else {
         LOG_ERR("Security failed: %s level %u err %d %s", addr, level, err,
                 bt_security_err_to_str(err));
+    }
+
+    /*
+     * Enforce the policy rather than just reporting it. This callback used
+     * to log and return, so a peer that refused to pair simply stayed
+     * connected at level 1 with the whole GATT database readable and
+     * writable - observed on hardware as "Security failed ... level 1
+     * err 2" followed by a link that lived on until the peer hung up.
+     */
+    if (err != BT_SECURITY_ERR_SUCCESS || level < NETWORK_SECURITY_LEVEL) {
+        LOG_WRN("Disconnecting %s: level %u is below the required level %d", addr, level,
+                (int)NETWORK_SECURITY_LEVEL);
+        (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
     }
 
     if (event_callback) {
