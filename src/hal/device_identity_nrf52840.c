@@ -16,13 +16,8 @@
  * which variant is fitted.
  */
 
-#include <hal/device_identity.h>
+#include <device_identity.h>
 
-/*
- * nrfx.h rather than <hal/nrf_ficr.h>: src/hal/include is on the include
- * path, so anything spelled <hal/...> resolves against this layer's own
- * headers first.
- */
 #include <nrfx.h>
 
 /** DEVICEID is two 32-bit words. */

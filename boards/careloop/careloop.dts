@@ -88,12 +88,23 @@
 
 	/*
 	 * U4 - BMI270 IMU. SDO to GND => 0x68, CSB high => I2C mode.
-	 * irq-gpios is ordered [INT1, INT2]; only INT2 carries
-	 * SENSOR_TRIG_DATA_READY. Both pins unverified - the self-test's
-	 * interrupt check is what will settle them.
+	 * irq-gpios is [INT1, INT2]; the driver pins any-motion to INT1 and
+	 * SENSOR_TRIG_DATA_READY to INT2. Both pins unverified.
+	 *
+	 * "bosch,bmi270-base" must stay. It has no binding file - it is a
+	 * marker the driver tests with DT_INST_NODE_HAS_COMPAT to select the
+	 * feature set, and "bosch,bmi270" supplies the actual binding.
+	 * Without it the driver picks bmi270_feature_max_fifo, whose
+	 * anymo_1/anymo_2 pointers are NULL, and SENSOR_TRIG_MOTION
+	 * dereferences them. Address 0 is readable flash here, so nothing
+	 * faults - it silently corrupts the sensor's feature config, on
+	 * disable as well as enable.
+	 *
+	 * Changing this changes the config blob uploaded at init; re-run
+	 * ./scripts/bringup.sh suite on hardware.
 	 */
 	bmi270: bmi270@68 {
-		compatible = "bosch,bmi270";
+		compatible = "bosch,bmi270-base", "bosch,bmi270";
 		reg = <0x68>;
 		irq-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>,
 			    <&gpio0 9 GPIO_ACTIVE_HIGH>;
