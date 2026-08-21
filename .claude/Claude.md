@@ -9,3 +9,5 @@ Zephyr: `https://zephyrproject.mcp.kapa.ai`
 
 
 Use best software practices, for a medical product.
+
+only make comments, when it is necessary.
