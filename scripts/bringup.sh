@@ -68,7 +68,7 @@ suite)
         --device-testing --hardware-map hardware-map.yml --west-flash \
         -x=BOARD_ROOT="$REPO" -x=DTS_ROOT="$REPO" \
         --outdir "$REPO/build/twister-out" --clobber-output \
-        -i --report-summary 0 -v "$@"
+        -i -v "$@"
     ;;
 "" | -h | --help)
     echo "usage: $(basename "$0") <$(names | tr '\n' '|' | sed 's/|$//')|suite> [-- west build args]" >&2
