@@ -10,4 +10,21 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(careloop_leds)
 
-target_sources(app PRIVATE src/main.c)
+# The product LED HAL, compiled verbatim. This app is the only thing on this
+# board that can verify it: nothing in the ztest suite can see light, so the
+# channel mapping and leds_set_mask()'s bit-to-channel loop are checked here or
+# nowhere.
+#
+# Named explicitly rather than globbed over src/hal - a glob would drag in
+# motion, power and skin_temperature and force CONFIG_SENSOR, the charger and
+# the whole MFD stack into what is meant to stay a minimal visual tool.
+target_sources(app PRIVATE
+    src/main.c
+    ${CARELOOP_ROOT}/src/hal/leds_npm1300.c
+)
+
+# hal/leds_npm1300.c includes <leds.h>, which includes "errors.h" from src/.
+target_include_directories(app PRIVATE
+    ${CARELOOP_ROOT}/src
+    ${CARELOOP_ROOT}/src/hal/include
+)
