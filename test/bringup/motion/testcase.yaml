@@ -1,0 +1,27 @@
+# Stays a standalone app rather than a ztest case: it streams until the board is
+# reset, and a ztest run has to terminate. What it is for - checking axis
+# orientation by tilting the board, and gyro scale by rotating it - is a
+# judgement no assertion makes, and the suite's gyro checks are taken at rest so
+# they cannot see scale at all. careloop_hal_2_motion covers the pass/fail part.
+
+common:
+  harness: console
+  platform_allow:
+    - careloop/nrf52840
+  harness_config:
+    type: multi_line
+    ordered: true
+    # Only that it initialised, configured the sensor and started streaming.
+    # The samples themselves are for a person moving the board.
+    regex:
+      - "CARELOOP MOTION STREAM"
+      - "capabilities 0x[0-9a-f]+"
+      - "STREAMING - reset the board to stop"
+  tags:
+    - bringup
+    - hardware
+    - level3
+
+tests:
+  bringup.motion:
+    timeout: 60
