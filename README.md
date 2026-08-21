@@ -42,13 +42,34 @@ Builds, flashes, runs all tests on hardware and writes reports. A good run
 ends with:
 
 ```text
-1/1 careloop/nrf52840  bringup.careloop  PASSED
-20 of 20 executed test cases passed (100.00%)
+5 of 5 executed test configurations passed (100.00%)
+62 of 62 executed test cases passed (100.00%)
+2 selected test cases not executed: 2 skipped.
 ```
 
-Covered: MCU identity and reset state, I2C bus and device presence, TMP117,
-BMI270 (including gravity magnitude, which a chip-ID check cannot prove), the
-nPM1300 rails and battery voltage, and the LED driver path.
+The two skips are deliberate, not a problem: `hal_motion_f0_any_motion_is_manual`
+and `hal_leds_60_visual_check_is_manual` mark coverage that no assertion can
+reach, so they appear in the report rather than only in a comment. **A run
+reporting zero skips means those markers were lost.**
+
+Covered in two layers. The `careloop_<n>_*` suites drive the Zephyr drivers
+directly and localise a fault to the bus, the part or its configuration: MCU
+identity and reset state, clocks, I2C bus and device presence, TMP117, BMI270
+(including gravity magnitude, which a chip-ID check cannot prove), the nPM1300
+rails and battery voltage, and the LED driver path.
+
+The `careloop_hal_*` suites drive `src/hal` - the code the product actually
+ships - and verify the contracts its headers state: error codes, init ordering,
+"untouched on failure" guarantees and units. A failure in one layer but not the
+other is the most useful signal this suite produces. `careloop_hal_0_uninit`
+runs first by design, because every HAL latches an `initialized` flag with no
+way back, so the `NOT_INITIALIZED` paths are reachable exactly once per boot.
+
+Two standalone streamers exist for what assertions cannot judge:
+`./scripts/bringup.sh skin_temperature` prints a temperature per conversion, and
+`./scripts/bringup.sh motion` streams accel/gyro with the dominant gravity axis
+named - the only way to catch swapped axes or a wrong gyro scale factor, since
+every gyro check in the suite is taken at rest and so sees bias only.
 
 The LED tests are the one place in this suite where a pass is not proof. An
 LED has no readback, so they verify only that the register writes reach the

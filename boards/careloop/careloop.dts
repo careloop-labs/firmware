@@ -89,7 +89,20 @@
 	/*
 	 * U4 - BMI270 IMU. SDO to GND => 0x68, CSB high => I2C mode.
 	 * irq-gpios is [INT1, INT2]; the driver pins any-motion to INT1 and
-	 * SENSOR_TRIG_DATA_READY to INT2. Both pins unverified.
+	 * SENSOR_TRIG_DATA_READY to INT2. The mapping is hardcoded in the
+	 * driver, not a devicetree choice.
+	 *
+	 * INT2 (P0.09) is VERIFIED on hardware, 2026-08-21:
+	 * careloop_hal_2_motion's data-ready test counted exactly 20 interrupts
+	 * in 200 ms with the accelerometer at 100 Hz. That also settles two
+	 * things it is easy to doubt - GPIO_ACTIVE_HIGH is the correct polarity
+	 * here, and nfct-pins-as-gpios really did reach UICR, since P0.09 is an
+	 * NFC pin and is dead as a GPIO otherwise.
+	 *
+	 * INT1 (P1.15) is still UNVERIFIED. Nothing proves it carries a pulse:
+	 * any-motion is armed in the suite but its firing needs the board picked
+	 * up, so that case configures thresholds and then skips. Every other
+	 * assertion would pass with this pin unconnected.
 	 *
 	 * "bosch,bmi270-base" must stay. It has no binding file - it is a
 	 * marker the driver tests with DT_INST_NODE_HAS_COMPAT to select the
