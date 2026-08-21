@@ -1,0 +1,26 @@
+# Stays a standalone app rather than a ztest case: it streams until the board is
+# reset, and a ztest run has to terminate. What it is for - watching temperature
+# respond to a finger or a breath over minutes - is a judgement no assertion
+# makes. careloop_hal_1_temperature covers the pass/fail part.
+
+common:
+  harness: console
+  platform_allow:
+    - careloop/nrf52840
+  harness_config:
+    type: multi_line
+    ordered: true
+    # Only that it initialised, learned its pacing from the HAL, and produced a
+    # sample. The values themselves are for a person to watch.
+    regex:
+      - "CARELOOP SKIN TEMPERATURE STREAM"
+      - "conversion period \\d+ ms"
+      - "STREAMING - reset the board to stop"
+  tags:
+    - bringup
+    - hardware
+    - level3
+
+tests:
+  bringup.skin_temperature:
+    timeout: 60
