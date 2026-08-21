@@ -49,7 +49,20 @@ PYTHON="$TOOLCHAIN/opt/python@3.12/bin/python3.12"
 
 # Only one host process may hold the J-Link. A stale one wedges the probe into
 # "out of sync" and every later command fails confusingly.
-release() { pkill -9 -f -i jlink 2>/dev/null || true; sleep 1; }
+#
+# Two patterns, not one. rtt_console.py holds the probe exactly as hard as
+# JLinkExe does, but its command line contains no "jlink" - it is a Python
+# interpreter running a script whose name does not match - so a jlink-only
+# pattern silently misses it. A console left behind by an earlier run, or by a
+# Twister instance that was not reaped, then blocks the next flash and the
+# failure reads as "Timeout during flashing", naming neither the holder nor the
+# reason. Cost one confusing suite run on 2026-08-21, where the first test
+# flashed fine and every one after it failed.
+release() {
+    pkill -9 -f rtt_console.py 2>/dev/null || true
+    pkill -9 -f -i jlink 2>/dev/null || true
+    sleep 1
+}
 
 names() {
     for d in "$REPO"/test/bringup/*/; do

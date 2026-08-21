@@ -30,6 +30,7 @@ Usage (normally via the hardware map's serial_pty field):
 from __future__ import annotations
 
 import argparse
+import signal
 import sys
 import time
 
@@ -99,7 +100,21 @@ def clear_stale_control_blocks(jlink: pylink.JLink) -> None:
     time.sleep(1.0)
 
 
+def _terminate(signum, frame):  # noqa: ARG001 - signal handler signature
+    """Turn SIGTERM into the same clean exit path as ctrl-c.
+
+    Python's default SIGTERM action kills the process outright, skipping the
+    finally block that calls jlink.close(). The probe is then held until the
+    kernel reaps the USB handle, and the next flash fails with a bare
+    "Timeout during flashing" that names neither this process nor the reason.
+    Raising here reuses the KeyboardInterrupt path, which does release it.
+    """
+    raise KeyboardInterrupt
+
+
 def main() -> int:
+    signal.signal(signal.SIGTERM, _terminate)
+
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--device", default="nRF52840_xxAA")
     ap.add_argument("--probe", default=None, help="J-Link serial number")
