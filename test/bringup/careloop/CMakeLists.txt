@@ -33,6 +33,7 @@ target_sources(app PRIVATE
     src/test_hal_uninit.c
     src/test_hal_temperature.c
     src/test_hal_motion.c
+    src/test_hal_motion_fifo.c
     src/test_hal_power.c
     src/test_hal_leds.c
     ${CARELOOP_HAL_SOURCES}

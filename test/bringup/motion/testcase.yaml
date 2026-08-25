@@ -11,11 +11,18 @@ common:
   harness_config:
     type: multi_line
     ordered: true
-    # Only that it initialised, configured the sensor and started streaming.
-    # The samples themselves are for a person moving the board.
+    # Only that it initialised, armed the features, started hardware batching
+    # and reached the stream. The samples themselves, and whether the events
+    # ever fire, are for a person moving the board.
+    #
+    # The fifo line is worth matching rather than leaving to the eye: every
+    # step in start_features() warns and carries on instead of aborting, so a
+    # board where the FIFO never started still reaches "STREAMING" and looks
+    # fine until someone reads the block above it.
     regex:
       - "CARELOOP MOTION STREAM"
       - "capabilities 0x[0-9a-f]+"
+      - "fifo +[0-9]+ ms batches"
       - "STREAMING - reset the board to stop"
   tags:
     - bringup

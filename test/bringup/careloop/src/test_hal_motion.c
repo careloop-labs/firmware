@@ -60,10 +60,18 @@
 #define GYRO_SETTLE_MS 100U
 #define DATA_READY_WINDOW_MS 200U
 
-/* Any-motion limits the driver in NCS v3.4.0 accepts. */
+/*
+ * Any-motion limits, from the part rather than from the vendor driver.
+ *
+ * The duration ceiling used to be 81900 ms here, which was the driver's
+ * twelve-bit mask rather than the hardware: ANYMO_1.duration is thirteen bits
+ * at 20 ms per step, so 8191 * 20 ms = 163820 ms, and the datasheet quotes
+ * the range as 0 to 163 seconds. The HAL writes the register directly now and
+ * so reaches all of it.
+ */
 #define ANY_MOTION_THRESHOLD_MIN_MG 1U
 #define ANY_MOTION_THRESHOLD_MAX_MG 1000U
-#define ANY_MOTION_DURATION_MAX_MS 81900U
+#define ANY_MOTION_DURATION_MAX_MS 163820U
 #define ANY_MOTION_DURATION_STEP_MS 20U
 
 static const struct motion_config running_config = {
@@ -130,9 +138,24 @@ ZTEST_SUITE(careloop_hal_2_motion, NULL, NULL, NULL, NULL, NULL);
 
 ZTEST(careloop_hal_2_motion, test_hal_motion_10_init)
 {
+    struct motion_fault fault;
+
     zassert_ok(motion_init(),
                "motion_init() failed - U4 did not answer at 0x68, the chip ID "
                "did not match, or the driver's config upload failed");
+
+    /*
+     * The earliest point the sensor's own health can be read: nothing has
+     * configured or suspended anything yet. Printed rather than asserted
+     * because the assertion belongs to careloop_hal_3_motion_fifo - what this
+     * line is for is saying whether a fault seen later was already here,
+     * which is the difference between a part that came up unhealthy and one
+     * this firmware upset.
+     */
+    if (motion_get_fault(&fault) == 0) {
+        printk("  fault at init   ERR_REG 0x%02x  INTERNAL_ERROR 0x%02x  feat_eng_disabled %d\n",
+               fault.raw, fault.internal_raw, fault.feature_engine_disabled);
+    }
 }
 
 ZTEST(careloop_hal_2_motion, test_hal_motion_20_capabilities)

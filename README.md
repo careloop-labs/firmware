@@ -43,14 +43,15 @@ ends with:
 
 ```text
 5 of 5 executed test configurations passed (100.00%)
-62 of 62 executed test cases passed (100.00%)
-2 selected test cases not executed: 2 skipped.
+71 of 71 executed test cases passed (100.00%)
+3 selected test cases not executed: 3 skipped.
 ```
 
-The two skips are deliberate, not a problem: `hal_motion_f0_any_motion_is_manual`
-and `hal_leds_60_visual_check_is_manual` mark coverage that no assertion can
-reach, so they appear in the report rather than only in a comment. **A run
-reporting zero skips means those markers were lost.**
+The three skips are deliberate, not a problem: `hal_motion_f0_any_motion_is_manual`,
+`hal_fifo_90_events_are_manual` and `hal_leds_60_visual_check_is_manual` mark
+coverage that no assertion can reach, so they appear in the report rather than
+only in a comment. **A run reporting fewer skips than that means those markers
+were lost.**
 
 Covered in two layers. The `careloop_<n>_*` suites drive the Zephyr drivers
 directly and localise a fault to the bus, the part or its configuration: MCU
