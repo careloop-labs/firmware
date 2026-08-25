@@ -23,3 +23,61 @@
 		};
 	};
 };
+
+/*
+ * The two nodes below are one unit and must move together: the AFE's
+ * tx-supply phandle points at the boost, so splitting them across files
+ * leaves a dangling reference that fails at build time.
+ */
+/ {
+	/*
+	 * U8, a MAX17222 boost generating +5V, enabled by net BOOST_EN_GPIO on
+	 * P1.09 (U8 pad 6 EN to U1 pad R1, from the PCB netlist). Its output
+	 * feeds two things and nothing else: the AFE's TX_SUP and the SFH7074
+	 * emitter common anode. So this rail powers emission only - the AFE
+	 * answers on I2C without it, off RX_SUP and IO_SUP.
+	 *
+	 * Not regulator-boot-on. hal/optical.h owns the enable, because the
+	 * AFE has to be reset once this rail is up (SBAS689D Table 79) and
+	 * only the driver can order those two.
+	 */
+	afe_boost_en: afe-boost-en {
+		compatible = "regulator-fixed";
+		regulator-name = "afe_boost_5v";
+		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <1000>;
+	};
+};
+
+&i2c0 {
+	/*
+	 * U7 - AFE4404 optical front end, driving the SFH7074 (LED1). Fixed
+	 * I2C address 0x58, not selectable.
+	 *
+	 * An earlier comment here claimed the fitted part was a MAX86178 and
+	 * that "ti,afe4404" was stale. That was backwards. CareLoop.kicad_pcb
+	 * places U7 AFE4404YZPR; MAX86178 appears nowhere in it, U5 is in no
+	 * BOM row, and CareLoop.csv lists AFE4404YZPR. The MAX86178 symbol
+	 * survives in afe.kicad_sch but was never laid out.
+	 *
+	 * There is no Zephyr or NCS driver for the AFE4404 either, so this
+	 * node exists for src/hal/optical_afe4404.c and the binding in
+	 * dts/bindings/sensor. Nothing in the sensor subsystem binds it.
+	 *
+	 * reset-gpios is RESETZ and is an output from us, despite the
+	 * schematic calling its net AFE_INT2. Treating that name at face value
+	 * and configuring P0.26 as an interrupt input leaves the part held in
+	 * reset, which looks exactly like an AFE that will not ACK.
+	 *
+	 * adc-rdy-gpios (P0.12, net AFE_INT1) is the real interrupt. Described
+	 * but unused: nothing reads samples yet. Both pins UNVERIFIED on
+	 * hardware.
+	 */
+	afe4404: afe4404@58 {
+		compatible = "ti,afe4404";
+		reg = <0x58>;
+		reset-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;
+		adc-rdy-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+		tx-supply = <&afe_boost_en>;
+	};
+};

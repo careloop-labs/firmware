@@ -23,19 +23,6 @@
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
 	};
-
-	/*
-	 * TPSM81299 boost (U6) generating +5V for the AFE LEDs, gated by net
-	 * BOOST_EN. Not regulator-boot-on: the PPG is out of scope until it
-	 * has a driver, so the rail stays off and the pin is driven inactive.
-	 * Pin unverified.
-	 */
-	afe_boost_en: afe-boost-en {
-		compatible = "regulator-fixed";
-		regulator-name = "afe_boost_5v";
-		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-		startup-delay-us = <1000>;
-	};
 };
 
 /*
@@ -125,9 +112,10 @@
 
 	/*
 	 * U2 - nPM1300. Source of every rail: BUCK1 -> +1V8 (MCU, sensors,
-	 * I2C pull-ups), BUCK2 -> +3V3, LDO1 -> +VLDO1 (AFE only). With no
-	 * SAADC divider on the board, its VBAT ADC is the only way to read
-	 * battery voltage.
+	 * I2C pull-ups), BUCK2 -> +3V3 (through jumper J3; feeds the AFE's
+	 * RX_SUP and the indicator LED anodes), LDO1 -> +VLDO1. With no SAADC
+	 * divider on the board, its VBAT ADC is the only way to read battery
+	 * voltage.
 	 *
 	 * Its interrupt is left undescribed: mfd_npm13xx_init() hard-fails on
 	 * any error in that path, so an unverified pin would break every
@@ -160,7 +148,13 @@
 				regulator-boot-on;
 			};
 
-			/* AFE supply - left off until the AFE has a driver. */
+			/*
+			 * Unused. Its output (U2 pad 29) reaches jumper J4
+			 * and stops - +VLDO1 connects to nothing else on the
+			 * board. The AFE runs off +3V3, +1V8 and the +5V
+			 * boost, so leave this off; enabling it powers
+			 * nothing.
+			 */
 			npm1300_ldo1: LDO1 {
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
@@ -210,11 +204,10 @@
 	};
 
 	/*
-	 * U5, the optical front end, is a MAX86178ENJ+T and is deliberately
-	 * absent: no Zephyr or NCS driver exists for it. It also needs both
-	 * LDO1 and the +5V boost up before it will ACK. The "ti,afe4404" node
-	 * that used to be here came from a stale BOM and matched no part on
-	 * the board.
+	 * The AFE4404 optical front end and the +5V boost that feeds its
+	 * emitters are NOT here. Both are revision-specific and live in
+	 * careloop_nrf52840_2_0_0.overlay, per the rule at the top of this
+	 * file. Look there before concluding the board has no PPG front end.
 	 */
 };
 

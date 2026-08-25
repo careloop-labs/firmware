@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 CareLoop Labs
+
+description: |
+  TI AFE4404 optical (PPG) analog front end.
+
+  There is no Zephyr or NCS driver for this part, so this binding describes it
+  only for src/hal/optical_afe4404.c. It intentionally carries no sensor
+  properties: nothing in the sensor subsystem instantiates this node.
+
+compatible: "ti,afe4404"
+
+include: i2c-device.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      RESETZ pin. Active low, and the polarity in the phandle must say so.
+
+      Pulse length is a mode selector on this pin, not just a timing minimum:
+      25-50 us resets the part, while anything over 200 us puts it into
+      hardware power-down instead. The driver owns that distinction.
+
+  adc-rdy-gpios:
+    type: phandle-array
+    description: |
+      ADC_RDY output, asserted once per sample period. Optional: the emitter
+      path does not need it, and nothing reads samples yet.
+
+  tx-supply:
+    type: phandle
+    description: |
+      Regulator feeding TX_SUP, the emitter drive rail. Without it the part
+      still answers on I2C - IO_SUP and RX_SUP are separate - but no emitter
+      can draw current, so the failure looks like working software and a dark
+      board.
