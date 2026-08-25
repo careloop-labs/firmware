@@ -68,7 +68,36 @@ def open_jlink(device: str, probe: str | None, speed: int) -> pylink.JLink:
     return jlink
 
 
-def clear_stale_control_blocks(jlink: pylink.JLink) -> None:
+def _write_chunk(jlink: pylink.JLink, addr: int, words: list[int], attempts: int = 4) -> None:
+    """Write one chunk, retrying a probe that is not ready yet.
+
+    bringup.sh reaches this within a second of `west flash`, and its release()
+    kills the previous J-Link holder with SIGKILL - which does not close the
+    USB handle, it only drops the process holding it. Until the kernel reaps
+    that handle the probe answers open() and connect() but can still fail
+    part way through a long write burst, which pylink reports as the entirely
+    unhelpful "Unspecified error".
+
+    Retrying costs nothing on a healthy probe and covers the window. The CPU
+    is re-halted first because a write that failed may have left the target
+    running, and a running image writes to the RAM being wiped.
+    """
+    for attempt in range(attempts):
+        try:
+            jlink.memory_write32(addr, words)
+            return
+        except Exception:
+            if attempt == attempts - 1:
+                raise
+            try:
+                if not jlink.halted():
+                    jlink.reset(halt=True)
+            except Exception:
+                pass
+            time.sleep(0.25 * (attempt + 1))
+
+
+def clear_stale_control_blocks(jlink: pylink.JLink) -> bool:
     """Wipe RAM, then reset, so only the running image's RTT block exists.
 
     The control block lives in a no-init section and `west flash` does not
@@ -85,19 +114,46 @@ def clear_stale_control_blocks(jlink: pylink.JLink) -> None:
 
     Zeroing then resetting is safe precisely because the reset follows: the
     image re-initialises its own block from a known-clean RAM.
+
+    Returns True if the wipe completed. A failure here is reported and
+    tolerated rather than fatal: this is hygiene, not correctness. Aborting
+    costs the whole run - the console is what carries the test output, and
+    Twister has already flashed by this point - while skipping the wipe only
+    risks replaying a previous image's output, which is visible in the log
+    and recoverable by rerunning. Trading a certain total loss for a possible
+    cosmetic one is the wrong way round.
     """
     jlink.reset(halt=True)
 
+    wiped = True
     words = [0] * 1024  # 4 KB per transaction
     for addr in range(RAM_START, RAM_START + RAM_SIZE, 4096):
-        jlink.memory_write32(addr, words)
+        try:
+            _write_chunk(jlink, addr, words)
+        except Exception as exc:
+            print(
+                f"rtt_console: could not wipe RAM at 0x{addr:08X} ({exc}).\n"
+                "rtt_console: continuing without it - if the output below looks like a "
+                "previous run (wrong banner, stale timestamps), reset the board and "
+                "rerun.",
+                file=sys.stderr,
+            )
+            wiped = False
+            break
 
+    # Unconditional, and the reason this is not inside the loop's success
+    # path: the target is halted from the reset above, so returning early
+    # without this leaves it stopped. The console would then wait out its
+    # 30 s control-block deadline and stream nothing, which looks like a dead
+    # image rather than a failed wipe.
     jlink.reset(halt=False)
 
     # Let the image re-create its control block before the search runs.
     # Without this the search can latch onto the freshly zeroed RAM and then
     # stream it as content - 9.7 MB of NUL bytes in one session here.
     time.sleep(1.0)
+
+    return wiped
 
 
 def _terminate(signum, frame):  # noqa: ARG001 - signal handler signature
@@ -133,6 +189,8 @@ def main() -> int:
         return 1
 
     if not args.no_reset_cb:
+        # Return value is deliberately not checked: a failed wipe has already
+        # explained itself on stderr and is not a reason to abandon the run.
         clear_stale_control_blocks(jlink)
 
     jlink.rtt_start(None)
