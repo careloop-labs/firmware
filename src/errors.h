@@ -20,5 +20,6 @@
 #define ERR_HAL_MOTION 0x800
 #define ERR_HAL_LEDS 0x900
 #define ERR_HAL_DEVICE_IDENTITY 0xA00
+#define ERR_HAL_OPTICAL 0xB00
 
 #endif /* ERRORS_H */
