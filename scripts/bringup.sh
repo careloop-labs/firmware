@@ -58,9 +58,22 @@ PYTHON="$TOOLCHAIN/opt/python@3.12/bin/python3.12"
 # failure reads as "Timeout during flashing", naming neither the holder nor the
 # reason. Cost one confusing suite run on 2026-08-21, where the first test
 # flashed fine and every one after it failed.
+# SIGKILL drops the process but does not close its USB handle - the kernel
+# reaps that on its own schedule. Until it does, the probe accepts open() and
+# connect() and then fails part way through a long transfer, which surfaces as
+# pylink's "Unspecified error" from the RAM wipe in rtt_console.py. So wait for
+# the handles to actually be gone rather than guessing with a fixed sleep.
 release() {
     pkill -9 -f rtt_console.py 2>/dev/null || true
     pkill -9 -f -i jlink 2>/dev/null || true
+
+    for _ in $(seq 20); do
+        pgrep -f rtt_console.py >/dev/null 2>&1 || pgrep -f -i jlink >/dev/null 2>&1 || break
+        sleep 0.25
+    done
+
+    # A floor even when nothing had to be killed: the handle from a process
+    # that exited normally moments ago is still being released.
     sleep 1
 }
 
